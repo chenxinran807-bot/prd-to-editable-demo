@@ -7,6 +7,23 @@ function slugify(text, fallback) {
   return known[text] ?? fallback;
 }
 
+function cleanHeading(text) {
+  return text.replace(/<!--.*?-->/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function extractBullets(body) {
+  return [...body.matchAll(/^\s*[-*]\s+(.+)$/gm)]
+    .map(match => cleanHeading(match[1]).replace(/\*\*/g, ''))
+    .filter(text => text.length > 2 && text.length < 140);
+}
+
+function extractActions(body) {
+  const quoted = [...body.matchAll(/[“「『](.+?)[”」』]/g)].map(match => cleanHeading(match[1]));
+  const verbs = [...body.matchAll(/(?:点击|选择|上传|拍照|提交|确认|删除|取消|返回|查看|编辑|刷新|重试|试穿|加购)([^，。；\n]{0,12})/g)]
+    .map(match => cleanHeading(match[0]));
+  return [...new Set([...quoted, ...verbs])].filter(text => text.length >= 2 && text.length <= 24);
+}
+
 function findTarget(text, pages, currentIndex) {
   const explicit = pages.find(page => text.includes(page.title));
   if (explicit) return explicit.id;
@@ -15,14 +32,14 @@ function findTarget(text, pages, currentIndex) {
 }
 
 export function parsePrd(source) {
-  const title = source.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? '未命名原型';
+  const title = cleanHeading(source.match(/^#\s+(.+)$/m)?.[1] ?? '未命名原型');
   const personaText = source.match(/用户[：:]\s*(.+)/)?.[1]?.trim() ?? '目标用户（根据需求推断）';
   const goal = source.match(/目标[：:]\s*(.+)/)?.[1]?.trim() ?? '完成 PRD 描述的核心任务';
   const sections = [...source.matchAll(/^##\s+(.+)\n([\s\S]*?)(?=^##\s+|$)/gm)];
   const inferred = sections.length < 2;
   const rawPages = inferred
     ? [{ title: '功能首页', body: source }, { title: '操作结果', body: '展示操作完成结果。' }]
-    : sections.map(match => ({ title: match[1].trim(), body: match[2].trim() }));
+    : sections.map(match => ({ title: cleanHeading(match[1]), body: match[2].trim() }));
   const pages = rawPages.map((page, index) => ({
     id: slugify(page.title, `page-${index + 1}`),
     title: page.title,
@@ -32,7 +49,9 @@ export function parsePrd(source) {
 
   rawPages.forEach((rawPage, pageIndex) => {
     const page = pages[pageIndex];
-    const buttonLabels = [...rawPage.body.matchAll(/[“「](.+?)[”」]/g)].map(match => match[1]);
+    const bullets = extractBullets(rawPage.body).slice(0, 5);
+    bullets.forEach((text, elementIndex) => page.elements.push({ key: `${page.id}.detail-${elementIndex + 1}`, type: 'heading', text, editable: ['text', 'style'] }));
+    const buttonLabels = extractActions(rawPage.body);
     const labels = buttonLabels.length ? buttonLabels : pageIndex < pages.length - 1 ? ['继续'] : ['返回首页'];
     page.elements.push({
       key: `${page.id}.title`, type: 'heading', text: page.title, editable: ['text', 'style']
