@@ -32,6 +32,7 @@ export async function main(argv = process.argv.slice(2)) {
   }
   const source = await readFile(resolve(options.prd), 'utf8');
   const manifest = parsePrd(source);
+  manifest.routing = { selected: route.id, reason: route.reason, handoff: route.id === 'local' ? 'local-fast-path' : `use-${route.id}-skill` };
   if (route.id !== 'local') manifest.assumptions.push({ id: 'route-fallback', statement: `专业路径 ${route.id} 尚未接入，使用本地生成`, source: 'router' });
   const html = renderDemo(manifest);
   const result = await writeOutput({ outDir: options.out, html, manifest });

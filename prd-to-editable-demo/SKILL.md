@@ -55,6 +55,8 @@ npm test
 
 ## 路由边界
 
+统一入口先输出路由判断。命中专业场景时，交付物中的 `prototype.manifest.json.routing` 会记录推荐的接管 Skill；本地 Demo 只能作为临时评审草稿，不能宣称等价于专业路径。
+
 - 明确要求工程化 React、内部组件库或研发交付：后续由 `vne-prototype` 适配器接管。
 - 明确要求 Inspire 云端资产：后续由 `inspire-prototype` 适配器接管。
 - 完整流程图和切图且要求像素还原：后续由 `figma-flow-to-html-demo` 适配器接管。
