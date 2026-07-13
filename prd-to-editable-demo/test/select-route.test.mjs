@@ -25,3 +25,8 @@ test('visual design input routes to the high-fidelity specialist', () => {
 test('complex product journey routes to PRD understanding specialist', () => {
   assert.equal(selectRoute({ intent: '先梳理完整用户旅程和复杂状态', assets: [] }).id, 'prd-generator');
 });
+
+test('large PRD source routes away from the low-fidelity fallback', () => {
+  const source = `${'## 模块\n需求状态处理中，删除后支持重试。\n'.repeat(5)}`;
+  assert.equal(selectRoute({ intent: '', assets: [], source }).id, 'prd-generator');
+});
