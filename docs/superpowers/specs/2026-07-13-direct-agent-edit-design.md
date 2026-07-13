@@ -1,4 +1,6 @@
-# 原型内直接 Agent 修改设计
+# 原型内直接 Agent 修改设计（已被上层架构取代）
+
+> 本文的自建 HTML 编辑桥方案不再是主产品方向。当前有效规范为 [外部编排 Skill + Inspire 业务设计 Skill 设计](./2026-07-13-hybrid-inspire-prototype-design.md)。只有在 Inspire 后续提供稳定节点级写入接口时，本文的请求、补丁与撤销协议才可作为实现参考。
 
 ## 目标
 
