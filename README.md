@@ -1,6 +1,6 @@
 # PRD to Editable Demo
 
-一个可安装到兼容 Agent 的 Skill：把 PRD 快速生成零依赖、可点击、可直接编辑的 HTML 评审原型。
+一个可安装到兼容 Agent 的统一入口 Skill：先理解 PRD，再选择本地快速原型或适用的专业原型能力，最终交付可演示、可编辑、可继续让 Agent 修改的结果。
 
 ## 快速开始
 
@@ -19,12 +19,14 @@ node prd-to-editable-demo/bin/prd-to-editable-demo.mjs \
   --out ./prototype-output
 ```
 
-生成的 `index.html` 支持预览和编辑模式。编辑模式可以点选元素修改文案、颜色、显隐、禁用状态和跳转，并导出 `prototype.patches.json` 与 `agent-comments.json`。
+简单评审场景会生成 `index.html`，支持预览和编辑模式。编辑模式可以点选元素修改文案、颜色、显隐、禁用状态和跳转，并导出 `prototype.patches.json` 与 `agent-comments.json`。
+
+复杂旅程、高保真设计稿、工程交付、Inspire 或 Figma 流程还原场景会生成 `specialist-handoff.json` 并停止本地模板生成。Agent 应按照交接包调用指定专业 Skill；状态码 3 表示“需要专业接管”，不是执行失败。
 
 ## MVP 使用流程
 
 1. 准备一个 Markdown 或纯文本 PRD。
-2. 执行生成命令，打开输出目录中的 `index.html`。
+2. 执行生成命令；如果返回本地路径，打开输出目录中的 `index.html`；如果要求专业接管，由 Agent 继续执行 `specialist-handoff.json`。
 3. 在“预览”模式走通页面流程；需要修改时切换到“编辑”。
 4. 点选元素修改文案或样式，必要时提交“让 Agent 修改”任务。
 5. 将导出的补丁和反馈文件交给后续 Agent 或设计开发流程。
@@ -50,4 +52,4 @@ npm run package
 
 输出文件为 `dist/prd-to-editable-demo-skill.zip`。该安装包的根目录直接包含 `SKILL.md`，可以在 AgentBuddy 的「上传 Zip」入口使用。不要直接上传 GitHub 自动下载的仓库 ZIP，因为它通常会多包一层仓库目录。
 
-当前版本默认走本地快速路径；当用户明确要求 Inspire、工程化交付或 Figma 切图还原时，会提示专业路径尚未接入并安全降级到本地生成。
+当前版本默认服务于快速评审；复杂需求或专业输入不得静默降级成本地模板。专业 Skill 不可用时应清楚报告缺失能力，只有用户明确接受低保真草稿后才允许降级。

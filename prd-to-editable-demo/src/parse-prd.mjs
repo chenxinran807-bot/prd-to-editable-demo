@@ -37,16 +37,28 @@ function evidenceFor(source, term) {
 }
 
 function extractBusinessObjects(source) {
+  const objectVerbs = ['展示', '维护', '保存', ...ACTION_VERBS, '新增'];
   const phrases = [...source.matchAll(/(?:展示|维护|保存|查看|选择|上传|创建|新增|编辑|提交|删除|搜索|筛选|标记)(?:“|「)?([^”，。；\n]{1,24})/g)]
     .map(match => match[1]);
   const inferred = phrases.flatMap(phrase => phrase.split(/和|及|、|并|后|时/))
-    .map(term => term
+    .map(rawTerm => {
+      let term = rawTerm
+      .replace(/^点击[“「]?/, '')
       .replace(/^(?:一个|新的|该|当前|目标)/, '')
       .replace(/(?:入口|按钮|功能|信息|状态)$/, '')
       .replace(/(?:进入|允许|支持|可以).*$/, '')
-      .trim())
+      .trim();
+      const nestedAction = objectVerbs.reduce((found, verb) => {
+        const index = term.lastIndexOf(verb);
+        return index > found.index ? { index, verb } : found;
+      }, { index: -1, verb: '' });
+      if (nestedAction.index >= 0) term = term.slice(nestedAction.index + nestedAction.verb.length).trim();
+      return term;
+    })
     .filter(term => term.length >= 2 && term.length <= 12)
-    .filter(term => !ACTION_VERBS.includes(term));
+    .filter(term => !ACTION_VERBS.includes(term))
+    .filter(term => !STATE_WORDS.some(state => term.includes(state)))
+    .filter(term => !/(?:人员|用户)$/.test(term));
   return [...new Set([...matchingTerms(source, OBJECT_WORDS), ...inferred])]
     .filter(term => term !== '用户' && term !== '页面');
 }
