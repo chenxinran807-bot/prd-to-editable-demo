@@ -1,0 +1,6 @@
+benchmark/*/index.html
+benchmark/*/prototype.manifest.json
+benchmark/*/prototype.patches.json
+benchmark/*/agent-comments.json
+benchmark/*/demo-summary.md
+benchmark/*/assumptions.md
