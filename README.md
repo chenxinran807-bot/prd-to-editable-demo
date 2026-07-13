@@ -1,6 +1,6 @@
 # PRD to Editable Demo
 
-一个可安装到兼容 Agent 的统一入口 Skill：先理解 PRD，再选择本地快速原型或适用的专业原型能力，最终交付可演示、可编辑、可继续让 Agent 修改的结果。
+一个可安装到 Aime、Codex 等兼容 Agent 的统一入口 Skill：先理解 PRD，再选择最少的专业能力；简单评审交付本地 HTML，专业场景始终交付到 Inspire，由 Inspire 承担预览、手动编辑和版本管理。
 
 ## 快速开始
 
@@ -19,25 +19,34 @@ node prd-to-editable-demo/bin/prd-to-editable-demo.mjs \
   --out ./prototype-output
 ```
 
-简单评审场景会生成 `index.html`，支持预览和编辑模式。编辑模式可以点选元素修改文案、颜色、显隐、禁用状态和跳转，并导出 `prototype.patches.json` 与 `agent-comments.json`。
+简单评审场景会生成本地 `index.html`。复杂旅程、高保真、品牌或多状态场景生成 `specialist-handoff.json`，随后运行：
 
-复杂旅程、高保真设计稿、工程交付、Inspire 或 Figma 流程还原场景会生成 `specialist-handoff.json` 并停止本地模板生成。Agent 应按照交接包调用指定专业 Skill；状态码 3 表示“需要专业接管”，不是执行失败。
+```bash
+node prd-to-editable-demo/bin/run-inspire-pipeline.mjs \
+  --handoff ./prototype-output/specialist-handoff.json \
+  --design-skill workspace:<business-skill>@<version> \
+  --out ./inspire-delivery
+```
+
+已有原型的 Agent 迭代增加 `--ref <当前已接受 assetId>`。命令返回 Inspire 预览和收纳箱链接；图片、Icon、位置、大小、文字和颜色的手动精修直接在 Inspire 中完成，不再导出修改任务给另一个 Agent。
+
+状态码 3 表示“需要专业接管”，不是执行失败。内部可按场景利用 `prd-generator`、`pm-kakaxi-skills`、Open Design、花叔 Design、`vne-prototype` 或 `figma-flow-to-html-demo`，但它们提供的是需求、视觉或工程输入，不再各自成为最终原型容器。
 
 交接包会隔离图片 alt、富文本标签和链接等文档噪声，保留原 PRD/素材路径供专业能力使用，同时输出角色、目标、业务对象、动作、状态、证据和所选专业 Skill 的能力基线。专业结果只有补齐基线证据后才会标记为完成。
 
-专业 Skill 产出本地 HTML bundle 后，可运行 `node bin/finalize-specialist.mjs --source <专业结果目录> --handoff <交接包> --out <统一交付目录>`。该步骤保留专业原型及所有素材，并生成可直接编辑的 `index.html`；未经注入的原版保存在 `index.original.html`。
+一键 Inspire 流程会验证登录与指定版本的业务设计 Skill，保存资产谱系并执行确定性审查。Emoji、文字伪图标、通用紫色渐变、桌面模式、假手机框、无来源图标或 PRD 动作/状态缺失都会阻止候选版本覆盖上一已接受版本。自动通过后仍需主观视觉验收。
 
-专业场景会同时生成 `specialist-evidence.template.json`。填写证据后用 `--evidence` 传给回收命令，再运行 `node bin/verify-specialist.mjs --delivery <统一交付目录>`。默认打开不显示编辑工具且必须与专业原版像素一致；添加 `?edit=1` 或按 Alt+Shift+E 才进入编辑入口。只有专业基线和渲染保真都通过，状态才会成为 `completed`。
+非 Inspire 的历史本地 HTML bundle 仍可用 `finalize-specialist.mjs` 和 `verify-specialist.mjs` 兼容回收，原版保存在 `index.original.html`；这不是新的专业终态。
 
 ## MVP 使用流程
 
 1. 准备一个 Markdown 或纯文本 PRD。
-2. 执行生成命令；如果返回本地路径，打开输出目录中的 `index.html`；如果要求专业接管，由 Agent 继续执行 `specialist-handoff.json`。
-3. 在“预览”模式走通页面流程；需要修改时切换到“编辑”。
-4. 点选元素修改文案或样式，必要时提交“让 Agent 修改”任务。
-5. 将导出的补丁和反馈文件交给后续 Agent 或设计开发流程。
+2. 执行统一入口；简单任务打开本地 `index.html`，专业任务由 Agent 自动继续执行 `specialist-handoff.json`。
+3. 专业任务从命令返回的链接进入 Inspire，走通核心流程并完成主观视觉验收。
+4. 小调整直接用 Inspire 编辑器修改并撤销；Agent 修改则引用最新已接受 `assetId` 生成下一候选版本。
+5. 审查失败时查看 `native-design-report.json`；上一已接受版本保持不变。
 
-生成结果会同时包含页面清单、需求假设、修改补丁和评审反馈，方便复现与交接。
+本地快速路径仍保留页面清单、需求假设和补丁；专业路径保存 Inspire 计划、资产谱系、审查报告和后续说明。
 
 ## 本地验证
 
@@ -48,7 +57,7 @@ npm run smoke
 npm run benchmark
 ```
 
-浏览器端到端验收需要 Playwright，运行 `npm run test:browser`，覆盖页面跳转、元素编辑、撤销重做、刷新持久化以及补丁/Agent 任务导出。
+浏览器端到端验收需要 Playwright，运行 `npm run test:browser`，覆盖本地快速路径的页面跳转与编辑能力；Inspire 专业路径由 CLI 集成测试和平台内视觉验收覆盖。
 
 ## 生成可上传安装包
 

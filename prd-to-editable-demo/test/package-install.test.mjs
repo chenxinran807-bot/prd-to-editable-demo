@@ -16,6 +16,8 @@ test('packaged Skill installs without a wrapper directory and runs independently
   assert.equal(unzipResult.status, 0, unzipResult.stderr);
   assert.match(readFileSync(join(installed, 'SKILL.md'), 'utf8'), /name: prd-to-editable-demo/);
   assert.match(readFileSync(join(installed, 'bin', 'verify-specialist.mjs'), 'utf8'), /verifySpecialistRender/);
+  assert.match(readFileSync(join(installed, 'bin', 'run-inspire-pipeline.mjs'), 'utf8'), /createInspireClient/);
+  assert.match(readFileSync(join(installed, 'inspire-business-skill', 'SKILL.md'), 'utf8'), /Douyin Mall/);
 
   const run = spawnSync(process.execPath, [
     join(installed, 'bin', 'prd-to-editable-demo.mjs'),

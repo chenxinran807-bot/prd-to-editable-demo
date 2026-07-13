@@ -1,101 +1,67 @@
 ---
 name: prd-to-editable-demo
-description: 将 PRD、产品需求文字或需求文档快速转成零依赖、可点击、可直接编辑的 HTML 交互原型，并支持点选元素生成 Agent 修改任务。用于“PRD 转原型”“生成评审 Demo”“做可点击页面”“直接在原型上修改”“圈选后让 Agent 改”等需求；默认优先快速生成评审初版，把推断和缺口单独列出。
+description: Use when a user asks to turn a PRD, requirement document, screenshot, Figma flow, or product idea into a reviewable interactive prototype, especially when the result must remain editable in Inspire or needs native mobile product quality.
 ---
 
 # PRD To Editable Demo
 
-把用户的 PRD 转为一个可预览、可直接编辑、可继续交给 Agent 修改的原型。它是统一入口，不替代已经更适合特定输入的专业 Skill。
+这是 PRD 到可编辑交互原型的统一入口。先形成可追溯的需求模型，再按输入调用最少的专业能力；专业场景始终以 Inspire 作为最终原型容器，避免生成多套互相竞争的结果。
 
-## 执行原则
+## 工作原则
 
-1. 先生成可评审初版，不因局部信息缺失阻塞；但不得把 PRD 章节直接当作页面。
-2. 只有用户身份、核心任务或流程入口无法判断时才提问。
-3. 把推断写入 `assumptions.md`，不要冒充 PRD 事实。
-4. 默认生成零外部依赖的 `index.html`，不得依赖 CDN。
-5. 每个可编辑元素使用稳定、唯一的 `data-proto-key`。
-6. 简单任务只走一个快速路径；复杂富媒体 PRD 最多使用“需求理解 → 专业原型”两个阶段，不重复调用多个同类原型 Skill。
+1. 先产出可演示初版，推断与缺口单独记录；不得把 PRD 章节标题直接当页面。
+2. 需求模型至少包含用户角色、目标、业务对象、用户动作、状态/分支、事实证据、推断和缺口。
+3. 页面、控件和跳转必须可追溯到需求模型。禁止用“功能首页”“操作结果”“继续”等空洞占位词冒充理解。
+4. 简单、低保真评审可走本地 HTML 快速路径；复杂、多状态、高保真或品牌场景必须进入专业路径，不得静默降级。
+5. 专业路径中，`prd-generator`、`pm-kakaxi-skills`、Open Design、花叔 Design、`figma-flow-to-html-demo`、`vne-prototype` 只提供适用的理解、视觉或工程输入；Inspire 是唯一最终容器。
 
-## 先理解，再画页面
-
-生成前先形成需求模型，至少包含：用户角色、目标、业务对象、用户动作、状态/分支、事实证据、推断和缺口。页面与交互必须能追溯到其中一项；“市场调研”“竞品分析”“方向判断”等文档章节不是页面证据。
-
-如果核心角色、目标和入口只有一项缺失，可作最小推断并记录；如果业务对象与用户动作都无法提取，停止生成并向用户补问。先用用户自己的关键名词命名页面、对象和按钮，禁止用“功能首页”“操作结果”“继续”等空洞占位词冒充理解结果。
-
-## 快速执行
-
-在本 Skill 目录运行：
+## 统一入口
 
 ```bash
 node bin/prd-to-editable-demo.mjs --prd <prd-path> --out <output-directory>
 ```
 
-可选参数：
+可重复传入 `--asset <素材路径>`，也可使用 `--intent` 和 `--url`。若输出 `specialist-handoff.json` 并以状态码 3 结束，这是专业接管信号，不是失败。
 
-- `--intent <用户目标>`：用于识别专业路径。
-- `--asset <素材路径>`：可重复传入。
-- `--url <参考页面>`：保留给后续专业适配器。
+## 专业交付到 Inspire
 
-执行后必须运行：
+获得交接包后执行：
 
 ```bash
-npm test
-```
-
-## 交付
-
-向用户提供 `index.html` 的绝对路径，并说明：
-
-- “预览”模式用于走通业务流程。
-- “编辑”模式可点选元素修改文案、颜色、显隐、禁用和跳转。
-- “让 Agent 修改”会保存元素级修改任务，可导出 `agent-comments.json`。
-- 用户修改保存在浏览器本地，刷新后仍存在，也可导出补丁。
-
-同时交付：
-
-- `prototype.manifest.json`
-- `prototype.patches.json`
-- `agent-comments.json`
-- `demo-summary.md`
-- `assumptions.md`
-
-## 路由边界
-
-统一入口先输出路由判断。命中专业场景时，CLI 生成 `specialist-handoff.json` 后以状态码 3 停止；Agent 必须读取交接包并调用指定 Skill，完成后再用本 Skill 的统一交付结构补齐可编辑能力和验收记录。不得静默降级为本地模板，不得把临时草稿宣称为专业结果。
-
-- 复杂旅程、多角色、多状态或偏产品方案的纯文本 PRD：`prd-generator` 完成产品级需求理解及伴生原型。
-- 复杂 PRD 同时包含截图、图片或视觉证据：先用 `prd-generator` 形成结构化需求上下文，再由 `pm-kakaxi-skills` 完成高保真原型；前一阶段不是另一套竞争原型，而是后一阶段的输入。
-- 截图、设计稿、组件库或高保真要求：`pm-kakaxi-skills` 接管视觉与交互还原。
-- 明确要求工程化 React、内部组件库或研发交付：`vne-prototype` 接管。
-- 明确要求 Inspire 云端资产：`inspire-prototype` 接管。
-- 明确要求 Open Design、花叔 Design、设计工作区或品牌级视觉探索：对应设计工作区能力接管。
-- 完整流程图和切图且要求像素还原：`figma-flow-to-html-demo` 接管。
-- 其他情况始终使用本地快速路径。
-
-专业 Skill 不可用时，明确报告缺失能力和交接包位置；只有用户明确接受低保真草稿后才允许本地降级。
-
-## 回收专业结果
-
-专业 Skill 完成后，先保留其完整输出目录，不重写页面结构、视觉样式、素材或工程实现。若结果是本地 HTML bundle，执行：
-
-```bash
-node bin/finalize-specialist.mjs \
-  --source <专业结果目录> \
+node bin/run-inspire-pipeline.mjs \
   --handoff <specialist-handoff.json> \
-  --evidence <已填写的 specialist-evidence.json> \
-  --out <统一交付目录>
+  --design-skill <source:key@version> \
+  --out <delivery-directory>
 ```
 
-统一目录中的 `index.html` 是注入直接编辑、撤销重做、补丁和 Agent 修改任务后的版本；默认演示不显示编辑工具，地址添加 `?edit=1` 或按 Alt+Shift+E 后才显示。`index.original.html` 是未注入的专业原版，其余 CSS、JS 和素材原样复制。预览质量以原版为基线，统一层不得用本地模板覆盖专业页面。
-
-随后必须运行渲染保真验证：
+修改已有原型时直接基于最新已接受版本生成候选：
 
 ```bash
-node bin/verify-specialist.mjs --delivery <统一交付目录>
+node bin/run-inspire-pipeline.mjs \
+  --handoff <specialist-handoff.json> \
+  --design-skill <source:key@version> \
+  --ref <assetId> \
+  --out <delivery-directory>
 ```
 
-只有专业基线证据完整、原版与默认统一版像素一致、编辑层默认隐藏且按需可见时，`quality-report.json` 和 manifest 才能标记 `completed`；否则保持 `review-required`。
+必须先验证 Inspire 登录状态和指定版本的业务设计 Skill 可见。生成后记录 `assetId`、父版本、预览链接和收纳箱链接；确定性审查失败时不得覆盖上一已接受版本。
 
-若专业结果只提供远程 asset（如 Inspire），先使用该专业能力的官方导出命令取得代码包，再执行回收；无法取得本地 bundle 时保留原专业预览链接，并明确标记“远程编辑”，不得伪造本地可编辑交付。
+## 原生设计底线
 
-各专业路径必须保留的优势定义在 `references/capability-parity.json`。交付前按所选路径逐项核对；缺少任何一项时只能报告“未达到专业基线”，不能宣称统一结果更优。
+- Emoji 数量必须为 0，不得用星号、圆点或文字符号冒充 Icon。
+- 图标必须使用有来源、许可和业务角色记录的 SVG；缺失官方品牌资产时明确阻塞发布。
+- 禁止通用紫色渐变、桌面侧栏、假手机外壳、无来源品牌标识和未批准外链素材。
+- 必须覆盖 PRD 必要动作、成功/失败/空状态和清晰触控标签。
+- 自动规则通过不等于设计优秀；品牌原生感、视觉层级、素材质量和业务语义仍须主观视觉验收。
+
+## 编辑与迭代
+
+用户对图片、Icon、位置、大小、文字和颜色的手动精修，直接在 Inspire 中完成并保留撤销。Agent 修改必须基于当前 `assetId` 创建新版本；不得要求用户导出修改任务再发给另一个 Agent，也不得声称平台未提供的节点级 API 能实现像素级自然语言修改。
+
+向用户交付 Inspire `previewUrl` 和 `inboxDeepLink`。本地目录保存 `inspire-plan.json`、`inspire-delivery.json`、`native-design-report.json` 和 `NEXT.md`，但不得生成与 Inspire 竞争的专业 `index.html`。
+
+## 本地快速路径与兼容回收
+
+只有简单评审任务才直接交付本地 `index.html`、`prototype.manifest.json`、`assumptions.md` 和补丁文件。若非 Inspire 专业能力只能产出本地 HTML bundle，可用 `finalize-specialist.mjs` 保留原版为 `index.original.html`，再运行 `verify-specialist.mjs`；该兼容路径不得替代 Inspire 专业终态。
+
+交付前运行 `npm test`、`npm run benchmark` 和 `npm run smoke`。专业能力缺失、设计 Skill 不可见、审查失败或主观验收未完成时，必须如实报告，不得宣称达到专业基线。

@@ -5,6 +5,8 @@
   "private": true,
   "bin": {
     "prd-to-editable-demo": "bin/prd-to-editable-demo.mjs",
+    "run-inspire-pipeline": "bin/run-inspire-pipeline.mjs",
+    "audit-inspire-result": "bin/audit-inspire-result.mjs",
     "finalize-specialist": "bin/finalize-specialist.mjs",
     "verify-specialist": "bin/verify-specialist.mjs"
   },

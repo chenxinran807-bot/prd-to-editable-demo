@@ -20,3 +20,14 @@ test('Skill requires a requirements brief and forbids silent specialist fallback
   assert.match(source, /finalize-specialist\.mjs/);
   assert.match(source, /index\.original\.html/);
 });
+
+test('Skill makes Inspire the only professional final container', async () => {
+  const source = await readFile(new URL('../SKILL.md', import.meta.url), 'utf8');
+  assert.match(source, /Inspire.*最终.*容器/);
+  assert.match(source, /run-inspire-pipeline\.mjs/);
+  assert.match(source, /--ref.*assetId/);
+  assert.match(source, /直接在 Inspire/);
+  assert.match(source, /不得.*导出.*任务.*Agent/);
+  assert.match(source, /Emoji.*0/);
+  assert.match(source, /主观视觉验收/);
+});
