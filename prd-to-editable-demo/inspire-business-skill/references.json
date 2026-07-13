@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "icons": [
+    { "id": "home", "file": "icons/home.svg", "source": "project-authored-neutral-geometry", "license": "MIT", "role": "bottom-navigation" },
+    { "id": "video", "file": "icons/video.svg", "source": "project-authored-neutral-geometry", "license": "MIT", "role": "bottom-navigation" },
+    { "id": "message", "file": "icons/message.svg", "source": "project-authored-neutral-geometry", "license": "MIT", "role": "bottom-navigation" },
+    { "id": "cart", "file": "icons/cart.svg", "source": "project-authored-neutral-geometry", "license": "MIT", "role": "commerce-action" },
+    { "id": "profile", "file": "icons/profile.svg", "source": "project-authored-neutral-geometry", "license": "MIT", "role": "bottom-navigation" },
+    { "id": "back", "file": "icons/back.svg", "source": "project-authored-neutral-geometry", "license": "MIT", "role": "navigation" },
+    { "id": "more", "file": "icons/more.svg", "source": "project-authored-neutral-geometry", "license": "MIT", "role": "navigation" },
+    { "id": "camera", "file": "icons/camera.svg", "source": "project-authored-neutral-geometry", "license": "MIT", "role": "image-input" },
+    { "id": "album", "file": "icons/album.svg", "source": "project-authored-neutral-geometry", "license": "MIT", "role": "image-input" },
+    { "id": "refresh", "file": "icons/refresh.svg", "source": "project-authored-neutral-geometry", "license": "MIT", "role": "system-action" },
+    { "id": "close", "file": "icons/close.svg", "source": "project-authored-neutral-geometry", "license": "MIT", "role": "system-action" },
+    { "id": "check", "file": "icons/check.svg", "source": "project-authored-neutral-geometry", "license": "MIT", "role": "state-feedback" }
+  ],
+  "visualReferences": [
+    { "id": "create-entry", "kind": "accepted-e2e-capture", "sha256": "ad7be91ed79f6f9bfc8164b971c8b22531c981b5e343503889fc87a1da0de8d3", "scope": "创建形象底部浮层", "status": "accepted" },
+    { "id": "upload-sheet", "kind": "accepted-e2e-capture", "sha256": "9f35051a101905424064fa7357bf94619dcde9dc63dd970c0f1b01874c9e16fa", "scope": "照片来源选择", "status": "accepted" },
+    { "id": "photo-confirm", "kind": "accepted-e2e-capture", "sha256": "3423de84d1eda735642f5dd62177cbbb8c779a780404c9b0952dbf06ef5f0147", "scope": "拍摄确认与重拍", "status": "accepted" }
+  ],
+  "publicationGate": {
+    "status": "blocked",
+    "missing": ["brand-specific official bottom navigation icon set", "business-approved logo assets"],
+    "reason": "Neutral MIT icons are sufficient for local functional E2E but cannot be presented as official brand assets."
+  }
+}
