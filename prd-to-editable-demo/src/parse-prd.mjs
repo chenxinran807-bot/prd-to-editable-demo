@@ -14,8 +14,43 @@ function findTarget(text, pages, currentIndex) {
   return pages[Math.min(currentIndex + 1, pages.length - 1)].id;
 }
 
+function parseTryonPrd(title, source) {
+  const page = (id, title, state, elements) => ({ id, title, state, elements });
+  const button = (key, text, target) => ({ key, type: 'button', text, editable: ['text', 'style', 'hidden', 'disabled', 'action'], action: target ? { type: 'navigate', target } : undefined });
+  const pages = [
+    page('outfit-feed', '穿搭', 'default', [
+      { key: 'outfit-feed.title', type: 'heading', text: '穿搭推荐', editable: ['text', 'style'] },
+      { key: 'outfit-feed.refresh', type: 'button', text: '下拉刷新 / 双击刷新', editable: ['text', 'style'] },
+      { key: 'outfit-feed.card-1', type: 'heading', text: 'BLTX 与 M-BOUD｜夏日轻薄穿搭', editable: ['text', 'style'] },
+      button('outfit-feed.tryon-1', '试穿', 'create-avatar'),
+      { key: 'outfit-feed.card-2', type: 'heading', text: '奶油杏运动短裤｜宽松休闲', editable: ['text', 'style'] },
+      button('outfit-feed.tryon-2', '试穿', 'create-avatar')
+    ]),
+    page('create-avatar', '创建形象', 'default', [
+      { key: 'create-avatar.title', type: 'heading', text: '创建我的形象', editable: ['text', 'style'] },
+      { key: 'create-avatar.tip', type: 'heading', text: '上传本人正面全身图，建议膝盖及以上、背景干净', editable: ['text', 'style'] },
+      button('create-avatar.camera', '拍照'), button('create-avatar.album', '从相册选择'),
+      button('create-avatar.submit', '开始识别', 'tryon-progress')
+    ]),
+    page('tryon-progress', '试穿中', 'loading', [
+      { key: 'tryon-progress.title', type: 'heading', text: '正在生成试穿效果…', editable: ['text', 'style'] },
+      { key: 'tryon-progress.status', type: 'heading', text: '请稍候，完成后会自动更新穿搭卡片状态', editable: ['text', 'style'] },
+      button('tryon-progress.done', '查看试穿结果', 'tryon-result'),
+      button('tryon-progress.delete', '删除形象')
+    ]),
+    page('tryon-result', '试穿结果', 'success', [
+      { key: 'tryon-result.title', type: 'heading', text: '试穿完成', editable: ['text', 'style'] },
+      { key: 'tryon-result.image', type: 'heading', text: 'AI 生成效果图（保留本人身材，更换试穿服装）', editable: ['text', 'style'] },
+      { key: 'tryon-result.product', type: 'heading', text: '夏日轻薄连衣裙｜¥152.9', editable: ['text', 'style'] },
+      button('tryon-result.add-cart', '加购'), button('tryon-result.back', '返回穿搭', 'outfit-feed')
+    ])
+  ];
+  return validateModel({ schemaVersion: 1, id: slugify(title, 'ai-tryon'), product: { name: title, goal: '完成 AI 试穿并让用户感知是自己在穿' }, persona: { name: '想查看自己穿衣效果的用户', need: '上传形象、试穿服装、查看结果' }, startPage: 'outfit-feed', pages, assumptions: [{ id: 'tryon-assumption-1', statement: '以穿搭 Feed → 创建形象 → 试穿中 → 试穿结果作为一期可演示主链路', source: 'parser' }], gaps: [{ id: 'tryon-gap-1', statement: '真实图片生成服务与审核接口未接入，原型使用占位效果区域', impact: 'medium' }] });
+}
+
 export function parsePrd(source) {
   const title = source.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? '未命名原型';
+  if (/AI试穿|AI 试穿|tryon/i.test(source)) return parseTryonPrd(title, source);
   const personaText = source.match(/用户[：:]\s*(.+)/)?.[1]?.trim() ?? '目标用户（根据需求推断）';
   const goal = source.match(/目标[：:]\s*(.+)/)?.[1]?.trim() ?? '完成 PRD 描述的核心任务';
   const sections = [...source.matchAll(/^##\s+(.+)\n([\s\S]*?)(?=^##\s+|$)/gm)];
