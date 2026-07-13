@@ -17,4 +17,6 @@ test('Skill requires a requirements brief and forbids silent specialist fallback
   assert.match(source, /业务对象/);
   assert.match(source, /不得.*降级/);
   assert.match(source, /specialist-handoff\.json/);
+  assert.match(source, /finalize-specialist\.mjs/);
+  assert.match(source, /index\.original\.html/);
 });

@@ -4,7 +4,8 @@
   "type": "module",
   "private": true,
   "bin": {
-    "prd-to-editable-demo": "bin/prd-to-editable-demo.mjs"
+    "prd-to-editable-demo": "bin/prd-to-editable-demo.mjs",
+    "finalize-specialist": "bin/finalize-specialist.mjs"
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",

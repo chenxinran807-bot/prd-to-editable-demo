@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createRequire } from 'node:module';
@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { parsePrd } from '../src/parse-prd.mjs';
 import { renderDemo } from '../src/render-demo.mjs';
 import { writeOutput } from '../src/write-output.mjs';
+import { finalizeSpecialistResult } from '../src/finalize-specialist.mjs';
 
 const require = createRequire(import.meta.url);
 
@@ -28,10 +29,16 @@ export async function runBrowserE2E() {
   const manifest = parsePrd(source);
   manifest.routing = { selected: 'local', reason: 'browser-e2e', handoff: 'local-fast-path' };
   await writeOutput({ outDir: output, html: renderDemo(manifest), manifest });
+  const specialistSource = join(work, 'specialist-source');
+  const specialistOutput = join(work, 'specialist-output');
+  await mkdir(specialistSource, { recursive: true });
+  await writeFile(join(specialistSource, 'index.html'), '<!doctype html><html><head><style>.specialist{color:rgb(220,0,0)}</style></head><body><button class="specialist">专业按钮</button><div id="app"></div><script>setTimeout(()=>{document.querySelector("#app").innerHTML="<button>动态专业按钮</button>"},100)</script></body></html>');
+  await finalizeSpecialistResult({ sourceDir: specialistSource, outDir: specialistOutput, handoff: { routing: { selected: 'pm-kakaxi' }, requirements: { title: '高保真结果' } } });
   const server = createServer(async (request, response) => {
-    if (request.url !== '/' && request.url !== '/index.html') { response.writeHead(404).end(); return; }
+    const file = request.url === '/specialist' ? join(specialistOutput, 'index.html') : join(output, 'index.html');
+    if (!['/', '/index.html', '/specialist'].includes(request.url)) { response.writeHead(404).end(); return; }
     response.setHeader('content-type', 'text/html; charset=utf-8');
-    response.end(await readFile(join(output, 'index.html')));
+    response.end(await readFile(file));
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const browser = await chromium.launch({ headless: true });
@@ -73,7 +80,22 @@ export async function runBrowserE2E() {
 
     await page.reload();
     assert.equal(await page.locator('[data-proto-key="review.title"]').textContent(), '确认审核内容');
-    return { passed: true, checks: ['navigation', 'edit', 'undo', 'redo', 'agent-comment', 'patch-export', 'comment-export', 'reload-persistence'] };
+
+    await page.goto(`http://127.0.0.1:${server.address().port}/specialist`);
+    const specialistButton = page.getByRole('button', { name: '专业按钮' });
+    assert.equal(await specialistButton.evaluate(element => getComputedStyle(element).color), 'rgb(220, 0, 0)');
+    await page.locator('#proto-edit-toggle').click();
+    await specialistButton.click();
+    await page.locator('#proto-edit-text').fill('已编辑专业按钮');
+    await page.locator('#proto-edit-text').press('Tab');
+    assert.equal(await page.getByRole('button', { name: '已编辑专业按钮' }).textContent(), '已编辑专业按钮');
+    await page.reload();
+    assert.equal(await page.getByRole('button', { name: '已编辑专业按钮' }).textContent(), '已编辑专业按钮');
+    await page.locator('#proto-edit-toggle').click();
+    const dynamicButton = page.getByRole('button', { name: '动态专业按钮' });
+    await dynamicButton.click();
+    assert.match(await page.locator('#proto-selected-key').textContent(), /^specialist\./);
+    return { passed: true, checks: ['navigation', 'edit', 'undo', 'redo', 'agent-comment', 'patch-export', 'comment-export', 'reload-persistence', 'specialist-style-preservation', 'specialist-direct-edit', 'specialist-reload-persistence', 'specialist-dynamic-dom'] };
   } finally {
     server.closeAllConnections();
     await new Promise(resolve => server.close(resolve));

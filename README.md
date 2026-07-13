@@ -23,6 +23,8 @@ node prd-to-editable-demo/bin/prd-to-editable-demo.mjs \
 
 复杂旅程、高保真设计稿、工程交付、Inspire 或 Figma 流程还原场景会生成 `specialist-handoff.json` 并停止本地模板生成。Agent 应按照交接包调用指定专业 Skill；状态码 3 表示“需要专业接管”，不是执行失败。
 
+专业 Skill 产出本地 HTML bundle 后，可运行 `node bin/finalize-specialist.mjs --source <专业结果目录> --handoff <交接包> --out <统一交付目录>`。该步骤保留专业原型及所有素材，并生成可直接编辑的 `index.html`；未经注入的原版保存在 `index.original.html`。
+
 ## MVP 使用流程
 
 1. 准备一个 Markdown 或纯文本 PRD。

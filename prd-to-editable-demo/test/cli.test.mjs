@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -47,4 +47,21 @@ test('stops at a specialist handoff instead of generating a misleading local dem
   assert.equal(handoff.routing.selected, 'prd-generator');
   assert.ok(handoff.requirements.businessObjects.includes('照片'));
   assert.ok(handoff.requirements.userActions.includes('上传'));
+});
+
+test('finalizes a specialist bundle through the public CLI', () => {
+  const root = mkdtempSync(join(tmpdir(), 'specialist-cli-'));
+  const source = join(root, 'source');
+  const out = join(root, 'output');
+  const handoff = join(root, 'handoff.json');
+  mkdirSync(source, { recursive: true });
+  writeFileSync(join(source, 'index.html'), '<!doctype html><html><body><button>专业按钮</button></body></html>');
+  writeFileSync(handoff, JSON.stringify({ routing: { selected: 'figma-flow' }, requirements: { title: '活动页' } }));
+  const result = spawnSync(process.execPath, [
+    'bin/finalize-specialist.mjs', '--source', source, '--handoff', handoff, '--out', out
+  ], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(readFileSync(join(out, 'index.html'), 'utf8'), /编辑原型/);
+  assert.match(result.stdout, /index\.html/);
 });
