@@ -1,0 +1,13 @@
+{
+  "name": "prd-to-editable-demo",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "prd-to-editable-demo": "bin/prd-to-editable-demo.mjs"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "smoke": "node scripts/smoke-example.mjs"
+  }
+}
