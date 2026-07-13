@@ -35,6 +35,7 @@ export async function main(argv = process.argv.slice(2)) {
     const specialistBaseline = parity.specialists[route.id];
     const stages = route.stages ?? [route.id];
     const specialistPlan = stages.map(id => ({ id, baseline: parity.specialists[id] }));
+    const stageCriteria = [...new Set(specialistPlan.flatMap(stage => stage.baseline?.mustPreserve ?? []))];
     const handoff = {
       schemaVersion: 1,
       routing: { selected: route.id, stages, reason: route.reason, handoff: stages.map(id => `use-${id}-skill`).join('-then-'), status: 'required' },
@@ -47,17 +48,17 @@ export async function main(argv = process.argv.slice(2)) {
         '主流程可从入口走到结果',
         '推断与事实分离',
         '交付物可继续编辑',
-        ...(specialistBaseline?.mustPreserve ?? [])
+        ...stageCriteria
       ]
     };
     await rm(output, { recursive: true, force: true });
     await mkdir(output, { recursive: true });
     await writeFile(`${output}/specialist-handoff.json`, JSON.stringify(handoff, null, 2));
     await writeFile(`${output}/specialist-evidence.template.json`, `${JSON.stringify({
-      specialistEvidence: (specialistBaseline?.mustPreserve ?? []).map(criterion => ({ criterion, evidence: '' }))
+      specialistEvidence: stageCriteria.map(criterion => ({ criterion, evidence: '' }))
     }, null, 2)}\n`);
     await writeFile(`${output}/NEXT.md`, `# 专业能力接管\n\n- 执行链：${stages.join(' → ')}\n- 最终交付 Skill：${route.id}\n- 原因：${route.reason}\n- 输入契约：specialist-handoff.json\n- 验收证据模板：specialist-evidence.template.json\n\n统一入口必须按顺序执行计划：前一阶段输出作为后一阶段的需求上下文；不得把 PRD 章节机械生成页面。专业结果完成后填写每项证据，再执行 finalize-specialist 与 verify-specialist；缺少任一步时保持 review-required。\n`);
-    process.stderr.write(`需要由 ${route.id} 接管，已生成交接包：${route.reason}\n`);
+    process.stderr.write(`需要执行 ${stages.join(' → ')}，已生成交接包：${route.reason}\n`);
     return 3;
   }
   const manifest = parsePrd(source);

@@ -6,7 +6,7 @@ test('benchmark separates local demos from specialist handoffs across domains', 
   const report = runBenchmark();
   assert.equal(report.cases.length, 4);
   assert.ok(report.cases.every(item => item.passed), JSON.stringify(report, null, 2));
-  assert.equal(report.cases.find(item => item.name === 'strategy')?.route, 'prd-generator');
+  assert.equal(report.cases.find(item => item.name === 'strategy')?.route, 'inspire');
   assert.equal(report.cases.find(item => item.name === 'scheduling')?.route, 'local');
   assert.ok(report.cases.find(item => item.name === 'scheduling')?.businessObjects.includes('排班表'));
   assert.ok(report.cases.find(item => item.name === 'scheduling')?.states.includes('error'));

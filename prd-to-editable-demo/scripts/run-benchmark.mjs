@@ -12,7 +12,7 @@ export function runBenchmark() {
     { name: 'simple', fixture: 'simple-prd.md', route: 'local' },
     { name: 'incomplete', fixture: 'incomplete-prd.md', route: 'local' },
     { name: 'scheduling', fixture: 'scheduling-prd.md', route: 'local', expectedStates: ['error'] },
-    { name: 'strategy', fixture: 'strategy-prd.md', route: 'prd-generator' }
+    { name: 'strategy', fixture: 'strategy-prd.md', route: 'inspire', expectedStages: ['prd-generator', 'inspire'] }
   ];
   try {
     const cases = definitions.map(definition => {
@@ -29,6 +29,7 @@ export function runBenchmark() {
       const states = [...new Set((data.pages ?? []).map(page => page.state))];
       const passed = result.status === (local ? 0 : 3)
         && route === definition.route
+        && (definition.expectedStages ?? []).every((stage, index) => data.routing?.stages?.[index] === stage)
         && businessObjects.length > 0
         && (definition.expectedStates ?? []).every(state => states.includes(state))
         && (local ? /id="editor-panel"/.test(html) : !existsSync(join(output, 'index.html')));

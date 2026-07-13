@@ -42,17 +42,19 @@ test('stops at a specialist handoff instead of generating a misleading local dem
 
   assert.equal(result.status, 3, result.stderr);
   assert.match(result.stderr, /prd-generator/);
+  assert.match(result.stderr, /inspire/);
   assert.throws(() => readFileSync(join(out, 'index.html'), 'utf8'));
   const handoff = JSON.parse(readFileSync(join(out, 'specialist-handoff.json'), 'utf8'));
   const evidenceTemplate = JSON.parse(readFileSync(join(out, 'specialist-evidence.template.json'), 'utf8'));
-  assert.equal(handoff.routing.selected, 'prd-generator');
+  assert.equal(handoff.routing.selected, 'inspire');
   assert.ok(handoff.requirements.businessObjects.includes('照片'));
   assert.ok(handoff.requirements.userActions.includes('上传'));
   assert.ok(handoff.specialistBaseline.mustPreserve.length >= 3);
   assert.ok(handoff.specialistBaseline.mustPreserve.every(item => handoff.acceptance.includes(item)));
-  assert.deepEqual(handoff.routing.stages, ['prd-generator']);
-  assert.deepEqual(handoff.specialistPlan.map(item => item.id), ['prd-generator']);
-  assert.deepEqual(evidenceTemplate.specialistEvidence.map(item => item.criterion), handoff.specialistBaseline.mustPreserve);
+  assert.deepEqual(handoff.routing.stages, ['prd-generator', 'inspire']);
+  assert.deepEqual(handoff.specialistPlan.map(item => item.id), ['prd-generator', 'inspire']);
+  assert.ok(handoff.specialistPlan.flatMap(item => item.baseline.mustPreserve).every(criterion => handoff.acceptance.includes(criterion)));
+  assert.deepEqual(evidenceTemplate.specialistEvidence.map(item => item.criterion), [...new Set(handoff.specialistPlan.flatMap(item => item.baseline.mustPreserve))]);
   assert.ok(evidenceTemplate.specialistEvidence.every(item => item.evidence === ''));
 });
 
@@ -70,7 +72,8 @@ test('resolves repeated specialist asset paths without passing mapper metadata t
   assert.equal(result.status, 3, result.stderr);
   const handoff = JSON.parse(readFileSync(join(out, 'specialist-handoff.json'), 'utf8'));
   assert.deepEqual(handoff.inputs.assets, [asset]);
-  assert.equal(handoff.routing.selected, 'pm-kakaxi');
+  assert.equal(handoff.routing.selected, 'inspire');
+  assert.deepEqual(handoff.routing.stages, ['pm-kakaxi', 'inspire']);
 });
 
 test('finalizes a specialist bundle through the public CLI', () => {

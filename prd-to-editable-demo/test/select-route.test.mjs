@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { selectRoute } from '../src/select-route.mjs';
 
 test('engineering delivery wins over other signals', () => {
-  assert.equal(selectRoute({ intent: '生成 React 研发交付包', assets: ['flow.png'] }).id, 'vne');
+  const route = selectRoute({ intent: '生成 React 研发交付包', assets: ['flow.png'] });
+  assert.equal(route.id, 'inspire');
+  assert.deepEqual(route.postExports, ['vne']);
 });
 
 test('explicit Inspire intent selects Inspire', () => {
@@ -11,13 +13,13 @@ test('explicit Inspire intent selects Inspire', () => {
 });
 
 test('explicit Open Design or Huashu Design intent preserves the design workspace route', () => {
-  assert.equal(selectRoute({ intent: '用 Open Design 做品牌级视觉探索' }).id, 'open-design');
-  assert.equal(selectRoute({ intent: '交给花叔 Design 做高品质界面' }).id, 'open-design');
+  assert.deepEqual(selectRoute({ intent: '用 Open Design 做品牌级视觉探索' }).stages, ['open-design', 'inspire']);
+  assert.deepEqual(selectRoute({ intent: '交给花叔 Design 做高品质界面' }).stages, ['open-design', 'inspire']);
 });
 
 test('complete flow assets plus pixel fidelity select figma flow', () => {
-  assert.equal(selectRoute({ intent: '按切图像素级还原', assets: ['01-flow.png', 'button.png'] }).id, 'figma-flow');
-  assert.equal(selectRoute({ intent: '按 Figma 切图像素级还原', assets: ['checkout-screen.png', 'button-slice.png'] }).id, 'figma-flow');
+  assert.deepEqual(selectRoute({ intent: '按切图像素级还原', assets: ['01-flow.png', 'button.png'] }).stages, ['figma-flow', 'inspire']);
+  assert.deepEqual(selectRoute({ intent: '按 Figma 切图像素级还原', assets: ['checkout-screen.png', 'button-slice.png'] }).stages, ['figma-flow', 'inspire']);
 });
 
 test('ordinary PRD uses the local fast path', () => {
@@ -25,29 +27,29 @@ test('ordinary PRD uses the local fast path', () => {
 });
 
 test('visual design input routes to the high-fidelity specialist', () => {
-  assert.equal(selectRoute({ intent: '根据截图做高保真原型', assets: ['screen.png'] }).id, 'pm-kakaxi');
+  assert.deepEqual(selectRoute({ intent: '根据截图做高保真原型', assets: ['screen.png'] }).stages, ['pm-kakaxi', 'inspire']);
 });
 
 test('a clearly named screen asset routes to high fidelity even without repeated intent words', () => {
-  assert.equal(selectRoute({ intent: '做个评审原型', assets: ['checkout-screen.png'] }).id, 'pm-kakaxi');
+  assert.deepEqual(selectRoute({ intent: '做个评审原型', assets: ['checkout-screen.png'] }).stages, ['pm-kakaxi', 'inspire']);
 });
 
 test('a reference URL routes to the specialist that can inspect the real page', () => {
-  assert.equal(selectRoute({ intent: '按这个页面做原型', url: 'https://example.com/console' }).id, 'vne');
+  assert.deepEqual(selectRoute({ intent: '按这个页面做原型', url: 'https://example.com/console' }).stages, ['vne', 'inspire']);
 });
 
 test('complex product journey routes to PRD understanding specialist', () => {
-  assert.equal(selectRoute({ intent: '先梳理完整用户旅程和复杂状态', assets: [] }).id, 'prd-generator');
+  assert.deepEqual(selectRoute({ intent: '先梳理完整用户旅程和复杂状态', assets: [] }).stages, ['prd-generator', 'inspire']);
 });
 
 test('large PRD source routes away from the low-fidelity fallback', () => {
   const source = `${'## 模块\n需求状态处理中，删除后支持重试。\n'.repeat(5)}`;
-  assert.equal(selectRoute({ intent: '', assets: [], source }).id, 'prd-generator');
+  assert.deepEqual(selectRoute({ intent: '', assets: [], source }).stages, ['prd-generator', 'inspire']);
 });
 
 test('complex rich-document PRD uses understanding then high-fidelity stages', () => {
   const source = `${'## 模块\n需求状态处理中，删除后支持重试。\n'.repeat(5)}\n![参考界面](screen.png)`;
   const route = selectRoute({ intent: '', assets: [], source });
-  assert.equal(route.id, 'pm-kakaxi');
-  assert.deepEqual(route.stages, ['prd-generator', 'pm-kakaxi']);
+  assert.equal(route.id, 'inspire');
+  assert.deepEqual(route.stages, ['prd-generator', 'pm-kakaxi', 'inspire']);
 });
