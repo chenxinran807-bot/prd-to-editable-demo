@@ -17,3 +17,11 @@ test('complete flow assets plus pixel fidelity select figma flow', () => {
 test('ordinary PRD uses the local fast path', () => {
   assert.equal(selectRoute({ intent: '做一个评审 demo', assets: [] }).id, 'local');
 });
+
+test('visual design input routes to the high-fidelity specialist', () => {
+  assert.equal(selectRoute({ intent: '根据截图做高保真原型', assets: ['screen.png'] }).id, 'pm-kakaxi');
+});
+
+test('complex product journey routes to PRD understanding specialist', () => {
+  assert.equal(selectRoute({ intent: '先梳理完整用户旅程和复杂状态', assets: [] }).id, 'prd-generator');
+});
