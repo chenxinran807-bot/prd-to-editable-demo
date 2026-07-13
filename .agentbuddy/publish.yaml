@@ -1,0 +1,11 @@
+schema_version: v1
+
+metadata:
+  name: prd-to-editable-demo
+  description: 将 PRD 快速生成可点击、可编辑的 HTML 评审原型
+
+registry:
+  skills:
+    - path: prd-to-editable-demo
+      items:
+        - prd-to-editable-demo
