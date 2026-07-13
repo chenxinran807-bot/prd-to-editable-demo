@@ -26,11 +26,11 @@ export async function main(argv = process.argv.slice(2)) {
     process.stderr.write('Usage: prd-to-editable-demo --prd <path> --out <directory> [--asset <path>] [--intent <text>] [--url <url>]\n');
     return 2;
   }
-  const route = selectRoute({ intent: options.intent, assets: options.assets, url: options.url });
+  const source = await readFile(resolve(options.prd), 'utf8');
+  const route = selectRoute({ intent: options.intent, assets: options.assets, source, url: options.url });
   if (route.id !== 'local') {
     process.stderr.write(`MVP 暂未接入 ${route.id}，已降级到本地快速生成：${route.reason}\n`);
   }
-  const source = await readFile(resolve(options.prd), 'utf8');
   const manifest = parsePrd(source);
   manifest.routing = { selected: route.id, reason: route.reason, handoff: route.id === 'local' ? 'local-fast-path' : `use-${route.id}-skill` };
   if (route.id !== 'local') manifest.assumptions.push({ id: 'route-fallback', statement: `专业路径 ${route.id} 尚未接入，使用本地生成`, source: 'router' });

@@ -1,4 +1,4 @@
-export function selectRoute({ intent = '', assets = [] } = {}) {
+export function selectRoute({ intent = '', assets = [], source = '' } = {}) {
   const normalized = intent.toLowerCase();
   if (/(react|研发交付|内部组件|codebase|工程)/i.test(normalized)) {
     return { id: 'vne', reason: '明确要求工程化或研发交付' };
@@ -11,6 +11,11 @@ export function selectRoute({ intent = '', assets = [] } = {}) {
   }
   if (/(完整用户旅程|多角色|复杂状态|产品方案|先梳理需求|需求理解)/i.test(normalized)) {
     return { id: 'prd-generator', reason: '需求包含复杂旅程或状态，需要先完成产品级需求理解' };
+  }
+  const headingCount = (source.match(/^##\s+/gm) || []).length;
+  const stateSignals = (source.match(/已修复|排查中|处理中|成功|失败|删除|重试|状态|异常|空状态/g) || []).length;
+  if (headingCount >= 4 || stateSignals >= 4 || source.length > 5000) {
+    return { id: 'prd-generator', reason: 'PRD 规模或状态分支较复杂，先完成产品级需求理解' };
   }
   const hasFlow = assets.some(asset => /(flow|流程|页面|screen)/i.test(asset));
   const hasSlices = assets.length >= 2;
