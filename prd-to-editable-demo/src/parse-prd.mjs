@@ -24,6 +24,53 @@ function extractActions(body) {
   return [...new Set([...quoted, ...verbs])].filter(text => text.length >= 2 && text.length <= 24);
 }
 
+const ACTION_VERBS = ['创建', '上传', '拍照', '选择', '查看', '编辑', '提交', '确认', '删除', '取消', '返回', '刷新', '重试', '试穿', '加购', '搜索', '筛选', '分享', '下载', '标记'];
+const STATE_WORDS = ['未开始', '处理中', '排查中', '成功', '失败', '异常', '为空', '空状态', '已读', '未读', '禁用', '删除'];
+const OBJECT_WORDS = ['用户', '商品', '内容', '照片', '图片', '服饰', '订单', '库存', '补货单', '通知', '任务', '审核', '报告', '文件', '页面', '账号', '门店', '方案'];
+
+function matchingTerms(source, terms) {
+  return terms.filter(term => source.includes(term));
+}
+
+function evidenceFor(source, term) {
+  return source.split(/\n|。|；/).map(line => cleanHeading(line).replace(/^[-*]\s*/, '')).find(line => line.includes(term)) ?? term;
+}
+
+function extractBusinessObjects(source) {
+  const phrases = [...source.matchAll(/(?:展示|维护|保存|查看|选择|上传|创建|新增|编辑|提交|删除|搜索|筛选|标记)(?:“|「)?([^”，。；\n]{1,24})/g)]
+    .map(match => match[1]);
+  const inferred = phrases.flatMap(phrase => phrase.split(/和|及|、|并|后|时/))
+    .map(term => term
+      .replace(/^(?:一个|新的|该|当前|目标)/, '')
+      .replace(/(?:入口|按钮|功能|信息|状态)$/, '')
+      .replace(/(?:进入|允许|支持|可以).*$/, '')
+      .trim())
+    .filter(term => term.length >= 2 && term.length <= 12)
+    .filter(term => !ACTION_VERBS.includes(term));
+  return [...new Set([...matchingTerms(source, OBJECT_WORDS), ...inferred])]
+    .filter(term => term !== '用户' && term !== '页面');
+}
+
+export function analyzeRequirements(source, { title, actor, goal } = {}) {
+  const userActions = matchingTerms(source, ACTION_VERBS);
+  const states = matchingTerms(source, STATE_WORDS).map(state => state === '为空' || state === '空状态' ? '空' : state);
+  const businessObjects = extractBusinessObjects(source);
+  const traceability = [
+    ...businessObjects.map(term => ({ kind: 'business-object', term, evidence: evidenceFor(source, term) })),
+    ...userActions.map(term => ({ kind: 'user-action', term, evidence: evidenceFor(source, term) })),
+    ...states.map(term => ({ kind: 'state', term, evidence: evidenceFor(source, term === '空' ? '空' : term) }))
+  ];
+  return {
+    title: title ?? cleanHeading(source.match(/^#\s+(.+)$/m)?.[1] ?? '未命名原型'),
+    actor: actor ?? source.match(/用户[：:]\s*(.+)/)?.[1]?.trim() ?? '未明确',
+    goal: goal ?? source.match(/目标[：:]\s*(.+)/)?.[1]?.trim() ?? '未明确',
+    businessObjects,
+    userActions,
+    states: [...new Set(states)],
+    traceability
+  };
+}
+
 function findTarget(text, pages, currentIndex) {
   const explicit = pages.find(page => text.includes(page.title));
   if (explicit) return explicit.id;
@@ -77,11 +124,20 @@ export function parsePrd(source) {
     });
   }
 
+  const requirements = analyzeRequirements(source, { title, actor: personaText, goal });
   const model = {
     schemaVersion: 1,
     id: slugify(title, 'editable-demo'),
     product: { name: title, goal },
     persona: { name: personaText, need: goal },
+    requirements: {
+      actor: requirements.actor,
+      goal: requirements.goal,
+      businessObjects: requirements.businessObjects,
+      userActions: requirements.userActions,
+      states: requirements.states
+    },
+    traceability: requirements.traceability,
     startPage: pages[0].id,
     pages,
     assumptions: inferred ? [{ id: 'assumption-1', statement: '页面结构由简短需求推断为首页和结果页', source: 'parser' }] : [],

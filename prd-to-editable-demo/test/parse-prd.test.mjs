@@ -24,3 +24,20 @@ test('incomplete PRD generates a reviewable model with assumptions', async () =>
   assert.ok(model.assumptions.length >= 1);
   assert.ok(model.gaps.length >= 1);
 });
+
+test('extracts auditable requirements before composing pages', () => {
+  const model = parsePrd(`# 补货提醒\n\n用户：门店店长\n\n目标：库存不足时补货。\n\n## 库存列表\n- 展示商品和库存。\n- 店长点击“创建补货单”。\n- 提交失败时允许重试。\n`);
+
+  assert.equal(model.requirements.actor, '门店店长');
+  assert.ok(model.requirements.businessObjects.includes('库存'));
+  assert.ok(model.requirements.userActions.includes('创建'));
+  assert.ok(model.requirements.states.includes('失败'));
+  assert.ok(model.traceability.every(item => item.evidence.length > 0));
+});
+
+test('extracts previously unseen business objects without a product dictionary', () => {
+  const model = parsePrd(`# 智能排班\n\n用户：值班主管\n\n目标：维护排班表。\n\n## 排班工作台\n- 展示排班表和班次。\n- 点击“新增班次”后保存排班表。\n`);
+
+  assert.ok(model.requirements.businessObjects.includes('排班表'));
+  assert.ok(model.requirements.businessObjects.includes('班次'));
+});

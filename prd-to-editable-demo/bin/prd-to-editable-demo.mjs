@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
-import { parsePrd } from '../src/parse-prd.mjs';
+import { analyzeRequirements, parsePrd } from '../src/parse-prd.mjs';
 import { selectRoute } from '../src/select-route.mjs';
 import { renderDemo } from '../src/render-demo.mjs';
 import { writeOutput } from '../src/write-output.mjs';
@@ -29,7 +29,20 @@ export async function main(argv = process.argv.slice(2)) {
   const source = await readFile(resolve(options.prd), 'utf8');
   const route = selectRoute({ intent: options.intent, assets: options.assets, source, url: options.url });
   if (route.id !== 'local') {
-    process.stderr.write(`MVP 暂未接入 ${route.id}，已降级到本地快速生成：${route.reason}\n`);
+    const output = resolve(options.out);
+    const handoff = {
+      schemaVersion: 1,
+      routing: { selected: route.id, reason: route.reason, handoff: `use-${route.id}-skill`, status: 'required' },
+      requirements: analyzeRequirements(source),
+      inputs: { prd: resolve(options.prd), assets: options.assets.map(resolve), referenceUrl: options.url ?? null },
+      acceptance: ['保持 PRD 业务对象和动作', '主流程可从入口走到结果', '推断与事实分离', '交付物可继续编辑']
+    };
+    await rm(output, { recursive: true, force: true });
+    await mkdir(output, { recursive: true });
+    await writeFile(`${output}/specialist-handoff.json`, JSON.stringify(handoff, null, 2));
+    await writeFile(`${output}/NEXT.md`, `# 专业能力接管\n\n- 接管 Skill：${route.id}\n- 原因：${route.reason}\n- 输入契约：specialist-handoff.json\n\n统一入口必须调用该 Skill 完成原型，不得把 PRD 章节机械生成页面。\n`);
+    process.stderr.write(`需要由 ${route.id} 接管，已生成交接包：${route.reason}\n`);
+    return 3;
   }
   const manifest = parsePrd(source);
   manifest.routing = { selected: route.id, reason: route.reason, handoff: route.id === 'local' ? 'local-fast-path' : `use-${route.id}-skill` };

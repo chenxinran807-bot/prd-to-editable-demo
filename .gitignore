@@ -4,3 +4,4 @@ benchmark/*/prototype.patches.json
 benchmark/*/agent-comments.json
 benchmark/*/demo-summary.md
 benchmark/*/assumptions.md
+prd-to-editable-demo/dist/

@@ -14,7 +14,7 @@ export function selectRoute({ intent = '', assets = [], source = '' } = {}) {
   }
   const headingCount = (source.match(/^##\s+/gm) || []).length;
   const stateSignals = (source.match(/已修复|排查中|处理中|成功|失败|删除|重试|状态|异常|空状态/g) || []).length;
-  if (headingCount >= 4 || stateSignals >= 4 || source.length > 5000) {
+  if (headingCount >= 4 || stateSignals >= 6 || source.length > 5000) {
     return { id: 'prd-generator', reason: 'PRD 规模或状态分支较复杂，先完成产品级需求理解' };
   }
   const hasFlow = assets.some(asset => /(flow|流程|页面|screen)/i.test(asset));
