@@ -39,7 +39,10 @@ node prd-to-editable-demo/bin/prd-to-editable-demo.mjs \
 cd prd-to-editable-demo
 npm test
 npm run smoke
+npm run benchmark
 ```
+
+浏览器端到端验收需要 Playwright，运行 `npm run test:browser`，覆盖页面跳转、元素编辑、撤销重做、刷新持久化以及补丁/Agent 任务导出。
 
 ## 生成可上传安装包
 

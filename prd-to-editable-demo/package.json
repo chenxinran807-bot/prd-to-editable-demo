@@ -10,6 +10,7 @@
     "test": "node --test test/*.test.mjs",
     "smoke": "node scripts/smoke-example.mjs",
     "benchmark": "node scripts/run-benchmark.mjs",
+    "test:browser": "node --input-type=module -e \"const m = await import('./scripts/browser-e2e.mjs'); console.log(JSON.stringify(await m.runBrowserE2E(), null, 2))\"",
     "package": "bash scripts/package-skill.sh"
   }
 }

@@ -18,10 +18,12 @@ function extractBullets(body) {
 }
 
 function extractActions(body) {
-  const quoted = [...body.matchAll(/[“「『](.+?)[”」』]/g)].map(match => cleanHeading(match[1]));
+  const quoted = [...body.matchAll(/(?:点击|选择|上传|拍照|提交|确认|删除|取消|返回|查看|编辑|刷新|重试|试穿|加购|创建|提供)[^“「『\n]{0,8}[“「『](.+?)[”」』]/g)]
+    .map(match => cleanHeading(match[1]));
+  if (quoted.length) return [...new Set(quoted)].filter(text => text.length >= 2 && text.length <= 24);
   const verbs = [...body.matchAll(/(?:点击|选择|上传|拍照|提交|确认|删除|取消|返回|查看|编辑|刷新|重试|试穿|加购)([^，。；\n]{0,12})/g)]
     .map(match => cleanHeading(match[0]));
-  return [...new Set([...quoted, ...verbs])].filter(text => text.length >= 2 && text.length <= 24);
+  return [...new Set(verbs)].filter(text => text.length >= 2 && text.length <= 24);
 }
 
 const ACTION_VERBS = ['创建', '上传', '拍照', '选择', '查看', '编辑', '提交', '确认', '删除', '取消', '返回', '刷新', '重试', '试穿', '加购', '搜索', '筛选', '分享', '下载', '标记'];
@@ -94,7 +96,7 @@ export function parsePrd(source) {
   const title = cleanHeading(source.match(/^#\s+(.+)$/m)?.[1] ?? '未命名原型');
   const personaText = source.match(/用户[：:]\s*(.+)/)?.[1]?.trim() ?? '目标用户（根据需求推断）';
   const goal = source.match(/目标[：:]\s*(.+)/)?.[1]?.trim() ?? '完成 PRD 描述的核心任务';
-  const sections = [...source.matchAll(/^##\s+(.+)\n([\s\S]*?)(?=^##\s+|$)/gm)];
+  const sections = [...source.matchAll(/^##\s+(.+)\n([\s\S]*?)(?=^##\s+|(?![\s\S]))/gm)];
   const inferred = sections.length < 2;
   const rawPages = inferred
     ? [{ title: '功能首页', body: source }, { title: '操作结果', body: '展示操作完成结果。' }]

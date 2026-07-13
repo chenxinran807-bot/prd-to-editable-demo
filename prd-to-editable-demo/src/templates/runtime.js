@@ -84,7 +84,7 @@ export const runtimeSource = String.raw`
   };
 
   document.addEventListener('click', event => {
-    const modeButton = event.target.closest('[data-mode]');
+    const modeButton = event.target.closest('.mode-switch [data-mode]');
     if (modeButton) {
       mode = modeButton.dataset.mode; document.body.dataset.mode = mode;
       $('#editor-panel').hidden = mode !== 'edit'; return;

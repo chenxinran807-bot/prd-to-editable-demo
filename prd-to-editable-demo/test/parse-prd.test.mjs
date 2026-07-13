@@ -14,6 +14,13 @@ test('extracts explicit pages and creates navigable review model', async () => {
   assert.ok(model.pages.some(page => page.state === 'success'));
   assert.ok(model.pages.some(page => page.state === 'empty'));
   assert.ok(model.pages.flatMap(page => page.elements).some(element => element.action?.type === 'navigate'));
+  const actionCopy = model.pages.flatMap(page => page.elements).filter(element => element.type === 'button').map(element => element.text);
+  assert.ok(actionCopy.includes('去审核'));
+  assert.ok(actionCopy.includes('提交审核'));
+  assert.ok(actionCopy.includes('返回列表'));
+  assert.ok(!actionCopy.includes('继续'));
+  assert.ok(actionCopy.every(label => !label.includes('点击')));
+  assert.ok(!actionCopy.includes('已提交审核'));
 });
 
 test('incomplete PRD generates a reviewable model with assumptions', async () => {
