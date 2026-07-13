@@ -39,4 +39,15 @@ npm test
 npm run smoke
 ```
 
+## 生成可上传安装包
+
+如果 AgentBuddy 无法读取 GitHub 仓库，推荐使用标准 ZIP 上传：
+
+```bash
+cd prd-to-editable-demo
+npm run package
+```
+
+输出文件为 `dist/prd-to-editable-demo-skill.zip`。该安装包的根目录直接包含 `SKILL.md`，可以在 AgentBuddy 的「上传 Zip」入口使用。不要直接上传 GitHub 自动下载的仓库 ZIP，因为它通常会多包一层仓库目录。
+
 当前版本默认走本地快速路径；当用户明确要求 Inspire、工程化交付或 Figma 切图还原时，会提示专业路径尚未接入并安全降级到本地生成。
