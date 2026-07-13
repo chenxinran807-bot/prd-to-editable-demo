@@ -34,6 +34,17 @@ export const runtimeSource = String.raw`
     document.querySelectorAll('.proto-page').forEach(page => page.hidden = page.dataset.pageId !== id);
     $('#current-page-label').textContent = manifest.pages.find(page => page.id === id)?.title || id;
   };
+  const bindNavigationFallback = () => {
+    document.querySelectorAll('[data-proto-key]').forEach(element => {
+      if (element.dataset.navigationBound === 'true') return;
+      element.dataset.navigationBound = 'true';
+      element.addEventListener('click', () => {
+        if (mode !== 'preview') return;
+        const action = element.dataset.action ? JSON.parse(element.dataset.action) : null;
+        if (action?.type === 'navigate') showPage(action.target);
+      });
+    });
+  };
   const fillEditor = element => {
     selected = element;
     const patch = patches[element.dataset.protoKey] || {};
@@ -101,5 +112,5 @@ export const runtimeSource = String.raw`
     if (action?.type === 'navigate') showPage(action.target);
   });
   ['edit-text','edit-color','edit-background','edit-hidden','edit-disabled','edit-target'].forEach(id => $('#' + id).addEventListener('change', updateSelected));
-  applyAll(); showPage(currentPage);
+  applyAll(); bindNavigationFallback(); showPage(currentPage);
 })();`;
