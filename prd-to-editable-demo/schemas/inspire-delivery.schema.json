@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/prd-to-editable-demo/inspire-delivery.schema.json",
+  "title": "Inspire Prototype Delivery Lineage",
+  "type": "object",
+  "required": ["schemaVersion", "prdSha256", "designSkill", "currentAssetId", "versions"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "prdSha256": { "type": "string", "minLength": 1 },
+    "designSkill": { "type": "string", "pattern": "^(built-in|private|workspace|public):" },
+    "currentAssetId": { "type": ["string", "null"] },
+    "versions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["assetId", "parentAssetId", "status", "previewUrl", "inboxDeepLink", "qualityStatus", "acceptanceStatus", "createdAt", "updatedAt"],
+        "properties": {
+          "assetId": { "type": "string", "minLength": 1 },
+          "parentAssetId": { "type": ["string", "null"] },
+          "status": { "const": "success" },
+          "previewUrl": { "type": ["string", "null"] },
+          "inboxDeepLink": { "type": ["string", "null"] },
+          "qualityStatus": { "enum": ["pending", "verified"] },
+          "acceptanceStatus": { "enum": ["candidate", "accepted"] },
+          "quality": { "type": ["object", "null"] },
+          "createdAt": { "type": "string" },
+          "updatedAt": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
