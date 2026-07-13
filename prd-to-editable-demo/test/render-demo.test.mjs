@@ -18,6 +18,7 @@ test('renders a zero-dependency editable HTML document', () => {
   assert.match(html, /id="edit-text"/);
   assert.match(html, /id="edit-target"/);
   assert.match(html, /id="undo-edit"/);
+  assert.match(html, /id="review-scenario"/);
   assert.match(html, /localStorage/);
   assert.match(html, /让 Agent 修改/);
 });

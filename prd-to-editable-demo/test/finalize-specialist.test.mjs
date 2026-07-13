@@ -22,5 +22,27 @@ test('preserves the specialist bundle and emits a unified editable delivery', as
   assert.equal(await readFile(join(output, 'assets', 'app.css'), 'utf8'), '.app{display:grid}');
   const manifest = JSON.parse(await readFile(join(output, 'prototype.manifest.json'), 'utf8'));
   assert.equal(manifest.routing.selected, 'pm-kakaxi');
+  assert.equal(manifest.routing.status, 'review-required');
+  const quality = JSON.parse(await readFile(join(output, 'quality-report.json'), 'utf8'));
+  assert.equal(quality.preservation.originalHtmlExact, true);
+  assert.ok(quality.specialistBaseline.missing.length >= 3);
+});
+
+test('marks a specialist delivery complete only when every baseline has evidence', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'specialist-evidence-'));
+  const source = join(root, 'source');
+  const output = join(root, 'output');
+  await mkdir(source, { recursive: true });
+  await writeFile(join(source, 'index.html'), '<!doctype html><html><body><h1>完整旅程</h1></body></html>');
+  const criteria = ['complete user story', 'entry-to-outcome paths', 'branch and state decisions', 'facts separated from assumptions'];
+  const handoff = {
+    routing: { selected: 'prd-generator' }, requirements: { title: '复杂产品' },
+    specialistEvidence: criteria.map(criterion => ({ criterion, evidence: `reviewed: ${criterion}` }))
+  };
+
+  await finalizeSpecialistResult({ sourceDir: source, outDir: output, handoff });
+  const manifest = JSON.parse(await readFile(join(output, 'prototype.manifest.json'), 'utf8'));
+  const quality = JSON.parse(await readFile(join(output, 'quality-report.json'), 'utf8'));
   assert.equal(manifest.routing.status, 'completed');
+  assert.deepEqual(quality.specialistBaseline.missing, []);
 });

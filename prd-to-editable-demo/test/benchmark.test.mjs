@@ -9,6 +9,7 @@ test('benchmark separates local demos from specialist handoffs across domains', 
   assert.equal(report.cases.find(item => item.name === 'strategy')?.route, 'prd-generator');
   assert.equal(report.cases.find(item => item.name === 'scheduling')?.route, 'local');
   assert.ok(report.cases.find(item => item.name === 'scheduling')?.businessObjects.includes('排班表'));
+  assert.ok(report.cases.find(item => item.name === 'scheduling')?.states.includes('error'));
   assert.ok(report.cases.find(item => item.name === 'simple')?.editable);
   assert.ok(report.cases.flatMap(item => item.businessObjects).every(term => !/(点击|运营人员|失败|发起)/.test(term)));
 });

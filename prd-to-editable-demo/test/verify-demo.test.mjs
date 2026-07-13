@@ -36,3 +36,17 @@ test('rejects a demo that drops all business objects from the experience', () =>
 
   assert.throws(() => verifyDemo({ html: renderDemo(manifest), manifest }), /business object coverage/);
 });
+
+test('rejects a demo that recognizes a declared state but never renders it', () => {
+  const manifest = {
+    id: 'save', product: { name: '排班', goal: '保存排班表' }, persona: { name: '主管', need: '排班' },
+    startPage: 'home', assumptions: [], gaps: [],
+    requirements: { actor: '主管', goal: '保存排班表', businessObjects: ['排班表'], userActions: ['保存'], states: ['失败'] },
+    traceability: [{ kind: 'state', term: '失败', evidence: '保存失败时允许重试' }],
+    pages: [{ id: 'home', title: '排班表', state: 'default', elements: [
+      { key: 'home.title', type: 'heading', text: '排班表' },
+      { key: 'home.save', type: 'button', text: '保存', action: { type: 'navigate', target: 'home' } }
+    ] }]
+  };
+  assert.throws(() => verifyDemo({ html: renderDemo(manifest), manifest }), /declared state coverage/);
+});

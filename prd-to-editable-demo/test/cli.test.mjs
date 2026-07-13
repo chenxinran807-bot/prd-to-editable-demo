@@ -47,6 +47,8 @@ test('stops at a specialist handoff instead of generating a misleading local dem
   assert.equal(handoff.routing.selected, 'prd-generator');
   assert.ok(handoff.requirements.businessObjects.includes('照片'));
   assert.ok(handoff.requirements.userActions.includes('上传'));
+  assert.ok(handoff.specialistBaseline.mustPreserve.length >= 3);
+  assert.ok(handoff.specialistBaseline.mustPreserve.every(item => handoff.acceptance.includes(item)));
 });
 
 test('finalizes a specialist bundle through the public CLI', () => {

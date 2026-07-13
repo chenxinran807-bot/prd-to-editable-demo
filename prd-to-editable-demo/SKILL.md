@@ -67,6 +67,7 @@ npm test
 - 截图、设计稿、组件库或高保真要求：`pm-kakaxi-skills` 接管视觉与交互还原。
 - 明确要求工程化 React、内部组件库或研发交付：`vne-prototype` 接管。
 - 明确要求 Inspire 云端资产：`inspire-prototype` 接管。
+- 明确要求 Open Design、花叔 Design、设计工作区或品牌级视觉探索：对应设计工作区能力接管。
 - 完整流程图和切图且要求像素还原：`figma-flow-to-html-demo` 接管。
 - 其他情况始终使用本地快速路径。
 
@@ -86,3 +87,5 @@ node bin/finalize-specialist.mjs \
 统一目录中的 `index.html` 是注入直接编辑、撤销重做、补丁和 Agent 修改任务后的版本；`index.original.html` 是未注入的专业原版，其余 CSS、JS 和素材原样复制。预览质量以原版为基线，统一层不得用本地模板覆盖专业页面。
 
 若专业结果只提供远程 asset（如 Inspire），先使用该专业能力的官方导出命令取得代码包，再执行回收；无法取得本地 bundle 时保留原专业预览链接，并明确标记“远程编辑”，不得伪造本地可编辑交付。
+
+各专业路径必须保留的优势定义在 `references/capability-parity.json`。交付前按所选路径逐项核对；缺少任何一项时只能报告“未达到专业基线”，不能宣称统一结果更优。

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { analyzeRequirements, parsePrd } from '../src/parse-prd.mjs';
 import { selectRoute } from '../src/select-route.mjs';
@@ -30,12 +31,21 @@ export async function main(argv = process.argv.slice(2)) {
   const route = selectRoute({ intent: options.intent, assets: options.assets, source, url: options.url });
   if (route.id !== 'local') {
     const output = resolve(options.out);
+    const parity = JSON.parse(await readFile(new URL('../references/capability-parity.json', import.meta.url), 'utf8'));
+    const specialistBaseline = parity.specialists[route.id];
     const handoff = {
       schemaVersion: 1,
       routing: { selected: route.id, reason: route.reason, handoff: `use-${route.id}-skill`, status: 'required' },
       requirements: analyzeRequirements(source),
       inputs: { prd: resolve(options.prd), assets: options.assets.map(resolve), referenceUrl: options.url ?? null },
-      acceptance: ['保持 PRD 业务对象和动作', '主流程可从入口走到结果', '推断与事实分离', '交付物可继续编辑']
+      specialistBaseline,
+      acceptance: [
+        '保持 PRD 业务对象和动作',
+        '主流程可从入口走到结果',
+        '推断与事实分离',
+        '交付物可继续编辑',
+        ...(specialistBaseline?.mustPreserve ?? [])
+      ]
     };
     await rm(output, { recursive: true, force: true });
     await mkdir(output, { recursive: true });
@@ -53,7 +63,7 @@ export async function main(argv = process.argv.slice(2)) {
   return 0;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1])) {
   main().then(code => { process.exitCode = code; }).catch(error => {
     process.stderr.write(`${error.stack || error.message}\n`); process.exitCode = 1;
   });

@@ -10,6 +10,11 @@ test('explicit Inspire intent selects Inspire', () => {
   assert.equal(selectRoute({ intent: '生成到 Inspire 收纳箱', assets: [] }).id, 'inspire');
 });
 
+test('explicit Open Design or Huashu Design intent preserves the design workspace route', () => {
+  assert.equal(selectRoute({ intent: '用 Open Design 做品牌级视觉探索' }).id, 'open-design');
+  assert.equal(selectRoute({ intent: '交给花叔 Design 做高品质界面' }).id, 'open-design');
+});
+
 test('complete flow assets plus pixel fidelity select figma flow', () => {
   assert.equal(selectRoute({ intent: '按切图像素级还原', assets: ['01-flow.png', 'button.png'] }).id, 'figma-flow');
 });
@@ -20,6 +25,14 @@ test('ordinary PRD uses the local fast path', () => {
 
 test('visual design input routes to the high-fidelity specialist', () => {
   assert.equal(selectRoute({ intent: '根据截图做高保真原型', assets: ['screen.png'] }).id, 'pm-kakaxi');
+});
+
+test('a clearly named screen asset routes to high fidelity even without repeated intent words', () => {
+  assert.equal(selectRoute({ intent: '做个评审原型', assets: ['checkout-screen.png'] }).id, 'pm-kakaxi');
+});
+
+test('a reference URL routes to the specialist that can inspect the real page', () => {
+  assert.equal(selectRoute({ intent: '按这个页面做原型', url: 'https://example.com/console' }).id, 'vne');
 });
 
 test('complex product journey routes to PRD understanding specialist', () => {

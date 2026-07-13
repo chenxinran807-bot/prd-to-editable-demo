@@ -15,6 +15,22 @@ export function verifyDemo({ html, manifest }) {
   if ((manifest.traceability ?? []).some(item => !item.evidence?.trim())) {
     throw new Error('quality check failed: traceability evidence');
   }
+  const stateCoverage = {
+    '失败': () => manifest.pages.some(page => page.state === 'error') || visibleCopy.includes('失败'),
+    '错误': () => manifest.pages.some(page => page.state === 'error') || visibleCopy.includes('错误'),
+    '异常': () => manifest.pages.some(page => page.state === 'error') || visibleCopy.includes('异常'),
+    '成功': () => manifest.pages.some(page => page.state === 'success') || visibleCopy.includes('成功'),
+    '空': () => manifest.pages.some(page => page.state === 'empty') || /暂无|为空|空状态/.test(visibleCopy),
+    '处理中': () => visibleCopy.includes('处理中'),
+    '排查中': () => visibleCopy.includes('排查中'),
+    '未开始': () => visibleCopy.includes('未开始'),
+    '已读': () => visibleCopy.includes('已读'),
+    '未读': () => visibleCopy.includes('未读'),
+    '禁用': () => visibleCopy.includes('禁用') || manifest.pages.flatMap(page => page.elements ?? []).some(element => element.disabled)
+  };
+  for (const state of manifest.requirements?.states ?? []) {
+    if (stateCoverage[state] && !stateCoverage[state]()) throw new Error(`quality check failed: declared state coverage (${state})`);
+  }
   const checks = [
     ['doctype', /<!doctype html>/i],
     ['embedded manifest', /id="prototype-manifest"/],

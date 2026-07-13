@@ -11,6 +11,36 @@ function cleanHeading(text) {
   return text.replace(/<!--.*?-->/g, '').replace(/\s+/g, ' ').trim();
 }
 
+function requirementText(source) {
+  return source
+    .replace(/<img\b[^>]*>/gi, ' ')
+    .replace(/!\[[\s\S]*?\]\([^\n]*\)/g, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/https?:\/\/\S+/g, ' ')
+    .split('\n')
+    .filter(line => !/^\s*(?:图片展示|该图片|这张图片|画面中|caption=|href=)/.test(line))
+    .join('\n')
+    .replace(/&(?:#x?[0-9a-f]+|\w+);/gi, ' ');
+}
+
+function inferActor(source, title) {
+  const explicit = source.match(/用户[：:]\s*(.+)/)?.[1]?.trim();
+  if (explicit) return explicit;
+  if (/用户|本人|内测/.test(source)) {
+    const product = title.replace(/[【[].*?[】\]]/g, '').replace(/[-—–].*$/, '').trim();
+    return product ? `${product}用户` : '产品用户';
+  }
+  return '未明确';
+}
+
+function inferGoal(source) {
+  const explicit = source.match(/目标[：:]\s*(.+)/)?.[1]?.trim();
+  if (explicit) return explicit;
+  const candidates = source.split(/\n|。|；/).map(cleanHeading).filter(Boolean);
+  const need = candidates.find(line => /(?:需要|改成|改为|补齐|立即|引导用户)/.test(line) && line.length >= 8 && line.length <= 100);
+  return need?.replace(/^[-*\d.、\s]+/, '') ?? '未明确';
+}
+
 function extractBullets(body) {
   return [...body.matchAll(/^\s*[-*]\s+(.+)$/gm)]
     .map(match => cleanHeading(match[1]).replace(/\*\*/g, ''))
@@ -18,16 +48,16 @@ function extractBullets(body) {
 }
 
 function extractActions(body) {
-  const quoted = [...body.matchAll(/(?:点击|选择|上传|拍照|提交|确认|删除|取消|返回|查看|编辑|刷新|重试|试穿|加购|创建|提供)[^“「『\n]{0,8}[“「『](.+?)[”」』]/g)]
+  const quoted = [...body.matchAll(/(?:点击|选择|上传|拍照|提交|确认|删除|取消|返回|查看|编辑|刷新|重试|试穿|加购|创建|提供|标记)[^“「『\n]{0,8}[“「『](.+?)[”」』]/g)]
     .map(match => cleanHeading(match[1]));
   if (quoted.length) return [...new Set(quoted)].filter(text => text.length >= 2 && text.length <= 24);
-  const verbs = [...body.matchAll(/(?:点击|选择|上传|拍照|提交|确认|删除|取消|返回|查看|编辑|刷新|重试|试穿|加购)([^，。；\n]{0,12})/g)]
+  const verbs = [...body.matchAll(/(?:点击|选择|上传|拍照|提交|确认|删除|取消|返回|查看|编辑|刷新|重试|试穿|加购|标记)([^，。；\n]{0,12})/g)]
     .map(match => cleanHeading(match[0]));
   return [...new Set(verbs)].filter(text => text.length >= 2 && text.length <= 24);
 }
 
 const ACTION_VERBS = ['创建', '上传', '拍照', '选择', '查看', '编辑', '提交', '确认', '删除', '取消', '返回', '刷新', '重试', '试穿', '加购', '搜索', '筛选', '分享', '下载', '标记'];
-const STATE_WORDS = ['未开始', '处理中', '排查中', '成功', '失败', '异常', '为空', '空状态', '已读', '未读', '禁用', '删除'];
+const STATE_WORDS = ['未开始', '未创建', '处理中', '生成中', '试穿中', '排查中', '已完成', '成功', '失败', '错误', '异常', '为空', '空状态', '已读', '未读', '禁用'];
 const OBJECT_WORDS = ['用户', '商品', '内容', '照片', '图片', '服饰', '订单', '库存', '补货单', '通知', '任务', '审核', '报告', '文件', '页面', '账号', '门店', '方案'];
 
 function matchingTerms(source, terms) {
@@ -46,7 +76,9 @@ function extractBusinessObjects(source) {
     .map(rawTerm => {
       let term = rawTerm
       .replace(/^点击[“「]?/, '')
-      .replace(/^(?:一个|新的|该|当前|目标)/, '')
+      .replace(/^(?:一个|新的|该|当前|目标|了)/, '')
+      .replace(/(?:✅|❌|目前|已经).*$/, '')
+      .replace(/[的之]$/, '')
       .replace(/(?:入口|按钮|功能|信息|状态)$/, '')
       .replace(/(?:进入|允许|支持|可以).*$/, '')
       .trim();
@@ -60,24 +92,27 @@ function extractBusinessObjects(source) {
     .filter(term => term.length >= 2 && term.length <= 12)
     .filter(term => !ACTION_VERBS.includes(term))
     .filter(term => !STATE_WORDS.some(state => term.includes(state)))
+    .filter(term => !/^(?:需|应|会|还|就|则|可|能)/.test(term))
     .filter(term => !/(?:人员|用户)$/.test(term));
   return [...new Set([...matchingTerms(source, OBJECT_WORDS), ...inferred])]
     .filter(term => term !== '用户' && term !== '页面');
 }
 
 export function analyzeRequirements(source, { title, actor, goal } = {}) {
-  const userActions = matchingTerms(source, ACTION_VERBS);
-  const states = matchingTerms(source, STATE_WORDS).map(state => state === '为空' || state === '空状态' ? '空' : state);
-  const businessObjects = extractBusinessObjects(source);
+  const analysisSource = requirementText(source);
+  const resolvedTitle = title ?? cleanHeading(source.match(/^#\s+(.+)$/m)?.[1] ?? '未命名原型');
+  const userActions = matchingTerms(analysisSource, ACTION_VERBS);
+  const states = matchingTerms(analysisSource, STATE_WORDS).map(state => state === '为空' || state === '空状态' ? '空' : state);
+  const businessObjects = extractBusinessObjects(analysisSource);
   const traceability = [
-    ...businessObjects.map(term => ({ kind: 'business-object', term, evidence: evidenceFor(source, term) })),
-    ...userActions.map(term => ({ kind: 'user-action', term, evidence: evidenceFor(source, term) })),
-    ...states.map(term => ({ kind: 'state', term, evidence: evidenceFor(source, term === '空' ? '空' : term) }))
+    ...businessObjects.map(term => ({ kind: 'business-object', term, evidence: evidenceFor(analysisSource, term) })),
+    ...userActions.map(term => ({ kind: 'user-action', term, evidence: evidenceFor(analysisSource, term) })),
+    ...states.map(term => ({ kind: 'state', term, evidence: evidenceFor(analysisSource, term === '空' ? '空' : term) }))
   ];
   return {
-    title: title ?? cleanHeading(source.match(/^#\s+(.+)$/m)?.[1] ?? '未命名原型'),
-    actor: actor ?? source.match(/用户[：:]\s*(.+)/)?.[1]?.trim() ?? '未明确',
-    goal: goal ?? source.match(/目标[：:]\s*(.+)/)?.[1]?.trim() ?? '未明确',
+    title: resolvedTitle,
+    actor: actor ?? inferActor(analysisSource, resolvedTitle),
+    goal: goal ?? inferGoal(analysisSource),
     businessObjects,
     userActions,
     states: [...new Set(states)],
@@ -127,6 +162,19 @@ export function parsePrd(source) {
       });
     });
   });
+
+  const errorClause = source.split(/\n|。|；/).map(line => cleanHeading(line).replace(/^[-*]\s*/, '')).find(line => /失败|错误|异常/.test(line));
+  if (errorClause && !pages.some(page => page.state === 'error')) {
+    const sourceIndex = rawPages.findIndex(page => /失败|错误|异常/.test(page.body));
+    const title = cleanHeading(errorClause.match(/(.{1,16}?(?:失败|错误|异常))/)?.[1] ?? '操作失败');
+    pages.push({
+      id: 'error-state', title, state: 'error', elements: [
+        { key: 'error-state.title', type: 'heading', text: title, editable: ['text', 'style'] },
+        { key: 'error-state.detail', type: 'heading', text: errorClause, editable: ['text', 'style'] },
+        { key: 'error-state.retry', type: 'button', text: /重试/.test(errorClause) ? '重试' : '返回', editable: ['text', 'style', 'action'], action: { type: 'navigate', target: pages[Math.max(0, sourceIndex)]?.id ?? pages[0].id } }
+      ]
+    });
+  }
 
   const hasEmptyState = /空状态|为空|没有内容/.test(source);
   if (hasEmptyState) {

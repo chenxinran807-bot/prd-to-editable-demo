@@ -1,4 +1,4 @@
-export function selectRoute({ intent = '', assets = [], source = '' } = {}) {
+export function selectRoute({ intent = '', assets = [], source = '', url } = {}) {
   const normalized = intent.toLowerCase();
   if (/(react|研发交付|内部组件|codebase|工程)/i.test(normalized)) {
     return { id: 'vne', reason: '明确要求工程化或研发交付' };
@@ -6,8 +6,17 @@ export function selectRoute({ intent = '', assets = [], source = '' } = {}) {
   if (/(inspire|收纳箱|云端画布)/i.test(normalized)) {
     return { id: 'inspire', reason: '明确要求 Inspire 资产能力' };
   }
+  if (/(open\s*design|花叔\s*design|花叔|设计工作区|品牌级视觉探索)/i.test(normalized)) {
+    return { id: 'open-design', reason: '明确要求设计工作区或品牌级视觉探索能力' };
+  }
+  if (url) {
+    return { id: 'vne', reason: '提供了真实页面 URL，需要专业页面读取与复刻能力' };
+  }
   if (/(截图|设计稿|组件库|高保真|视觉还原|kakaxi)/i.test(normalized)) {
     return { id: 'pm-kakaxi', reason: '存在视觉还原或设计稿输入，交给专业高保真能力' };
+  }
+  if (assets.some(asset => /(?:screen|screenshot|mockup|figma|设计稿|截图)/i.test(asset))) {
+    return { id: 'pm-kakaxi', reason: '检测到界面截图或设计稿素材，交给专业高保真能力' };
   }
   if (/(完整用户旅程|多角色|复杂状态|产品方案|先梳理需求|需求理解)/i.test(normalized)) {
     return { id: 'prd-generator', reason: '需求包含复杂旅程或状态，需要先完成产品级需求理解' };

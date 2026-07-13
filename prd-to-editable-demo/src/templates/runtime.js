@@ -33,6 +33,7 @@ export const runtimeSource = String.raw`
     currentPage = id;
     document.querySelectorAll('.proto-page').forEach(page => page.hidden = page.dataset.pageId !== id);
     $('#current-page-label').textContent = manifest.pages.find(page => page.id === id)?.title || id;
+    $('#review-scenario').value = id;
   };
   const bindNavigationFallback = () => {
     document.querySelectorAll('[data-proto-key]').forEach(element => {
@@ -112,5 +113,6 @@ export const runtimeSource = String.raw`
     if (action?.type === 'navigate') showPage(action.target);
   });
   ['edit-text','edit-color','edit-background','edit-hidden','edit-disabled','edit-target'].forEach(id => $('#' + id).addEventListener('change', updateSelected));
+  $('#review-scenario').addEventListener('change', event => showPage(event.target.value));
   applyAll(); bindNavigationFallback(); showPage(currentPage);
 })();`;

@@ -11,7 +11,7 @@ export function runBenchmark() {
   const definitions = [
     { name: 'simple', fixture: 'simple-prd.md', route: 'local' },
     { name: 'incomplete', fixture: 'incomplete-prd.md', route: 'local' },
-    { name: 'scheduling', fixture: 'scheduling-prd.md', route: 'local' },
+    { name: 'scheduling', fixture: 'scheduling-prd.md', route: 'local', expectedStates: ['error'] },
     { name: 'strategy', fixture: 'strategy-prd.md', route: 'prd-generator' }
   ];
   try {
@@ -26,11 +26,13 @@ export function runBenchmark() {
       const html = local && existsSync(join(output, 'index.html')) ? readFileSync(join(output, 'index.html'), 'utf8') : '';
       const route = data.routing?.selected ?? (local ? 'local' : undefined);
       const businessObjects = data.requirements?.businessObjects ?? [];
+      const states = [...new Set((data.pages ?? []).map(page => page.state))];
       const passed = result.status === (local ? 0 : 3)
         && route === definition.route
         && businessObjects.length > 0
+        && (definition.expectedStates ?? []).every(state => states.includes(state))
         && (local ? /id="editor-panel"/.test(html) : !existsSync(join(output, 'index.html')));
-      return { name: definition.name, route, passed, editable: local && /id="editor-panel"/.test(html), businessObjects, exitCode: result.status };
+      return { name: definition.name, route, passed, editable: local && /id="editor-panel"/.test(html), businessObjects, states, exitCode: result.status };
     });
     return { generatedAt: new Date().toISOString(), passed: cases.every(item => item.passed), cases };
   } finally {

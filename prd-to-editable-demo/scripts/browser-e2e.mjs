@@ -48,6 +48,10 @@ export async function runBrowserE2E() {
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     await assert.doesNotReject(() => page.waitForSelector('[data-page-id="pending-list"]:not([hidden])'));
 
+    await page.locator('#review-scenario').selectOption('empty-state');
+    assert.equal(await page.locator('#current-page-label').textContent(), '暂无内容');
+    await page.locator('#review-scenario').selectOption('pending-list');
+
     await page.getByRole('button', { name: '去审核' }).click();
     assert.equal(await page.locator('#current-page-label').textContent(), '审核确认');
 
@@ -82,20 +86,20 @@ export async function runBrowserE2E() {
     assert.equal(await page.locator('[data-proto-key="review.title"]').textContent(), '确认审核内容');
 
     await page.goto(`http://127.0.0.1:${server.address().port}/specialist`);
-    const specialistButton = page.getByRole('button', { name: '专业按钮' });
+    const specialistButton = page.getByRole('button', { name: '专业按钮', exact: true });
     assert.equal(await specialistButton.evaluate(element => getComputedStyle(element).color), 'rgb(220, 0, 0)');
     await page.locator('#proto-edit-toggle').click();
     await specialistButton.click();
     await page.locator('#proto-edit-text').fill('已编辑专业按钮');
     await page.locator('#proto-edit-text').press('Tab');
-    assert.equal(await page.getByRole('button', { name: '已编辑专业按钮' }).textContent(), '已编辑专业按钮');
+    assert.equal(await page.getByRole('button', { name: '已编辑专业按钮', exact: true }).textContent(), '已编辑专业按钮');
     await page.reload();
-    assert.equal(await page.getByRole('button', { name: '已编辑专业按钮' }).textContent(), '已编辑专业按钮');
+    assert.equal(await page.getByRole('button', { name: '已编辑专业按钮', exact: true }).textContent(), '已编辑专业按钮');
     await page.locator('#proto-edit-toggle').click();
     const dynamicButton = page.getByRole('button', { name: '动态专业按钮' });
     await dynamicButton.click();
     assert.match(await page.locator('#proto-selected-key').textContent(), /^specialist\./);
-    return { passed: true, checks: ['navigation', 'edit', 'undo', 'redo', 'agent-comment', 'patch-export', 'comment-export', 'reload-persistence', 'specialist-style-preservation', 'specialist-direct-edit', 'specialist-reload-persistence', 'specialist-dynamic-dom'] };
+    return { passed: true, checks: ['scenario-switch', 'navigation', 'edit', 'undo', 'redo', 'agent-comment', 'patch-export', 'comment-export', 'reload-persistence', 'specialist-style-preservation', 'specialist-direct-edit', 'specialist-reload-persistence', 'specialist-dynamic-dom'] };
   } finally {
     server.closeAllConnections();
     await new Promise(resolve => server.close(resolve));
