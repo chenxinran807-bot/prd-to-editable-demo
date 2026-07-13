@@ -5,7 +5,8 @@
   "private": true,
   "bin": {
     "prd-to-editable-demo": "bin/prd-to-editable-demo.mjs",
-    "finalize-specialist": "bin/finalize-specialist.mjs"
+    "finalize-specialist": "bin/finalize-specialist.mjs",
+    "verify-specialist": "bin/verify-specialist.mjs"
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",

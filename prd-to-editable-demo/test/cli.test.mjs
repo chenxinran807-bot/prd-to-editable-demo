@@ -44,11 +44,33 @@ test('stops at a specialist handoff instead of generating a misleading local dem
   assert.match(result.stderr, /prd-generator/);
   assert.throws(() => readFileSync(join(out, 'index.html'), 'utf8'));
   const handoff = JSON.parse(readFileSync(join(out, 'specialist-handoff.json'), 'utf8'));
+  const evidenceTemplate = JSON.parse(readFileSync(join(out, 'specialist-evidence.template.json'), 'utf8'));
   assert.equal(handoff.routing.selected, 'prd-generator');
   assert.ok(handoff.requirements.businessObjects.includes('照片'));
   assert.ok(handoff.requirements.userActions.includes('上传'));
   assert.ok(handoff.specialistBaseline.mustPreserve.length >= 3);
   assert.ok(handoff.specialistBaseline.mustPreserve.every(item => handoff.acceptance.includes(item)));
+  assert.deepEqual(handoff.routing.stages, ['prd-generator']);
+  assert.deepEqual(handoff.specialistPlan.map(item => item.id), ['prd-generator']);
+  assert.deepEqual(evidenceTemplate.specialistEvidence.map(item => item.criterion), handoff.specialistBaseline.mustPreserve);
+  assert.ok(evidenceTemplate.specialistEvidence.every(item => item.evidence === ''));
+});
+
+test('resolves repeated specialist asset paths without passing mapper metadata to path.resolve', () => {
+  const root = mkdtempSync(join(tmpdir(), 'editable-demo-assets-'));
+  const prd = join(root, 'visual-prd.md');
+  const asset = join(root, 'checkout-screen.png');
+  const out = join(root, 'output');
+  writeFileSync(prd, '# 结算页\n\n根据截图生成高保真结算页面。');
+  writeFileSync(asset, 'fixture');
+  const result = spawnSync(process.execPath, [
+    'bin/prd-to-editable-demo.mjs', '--prd', prd, '--asset', asset, '--out', out
+  ], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+
+  assert.equal(result.status, 3, result.stderr);
+  const handoff = JSON.parse(readFileSync(join(out, 'specialist-handoff.json'), 'utf8'));
+  assert.deepEqual(handoff.inputs.assets, [asset]);
+  assert.equal(handoff.routing.selected, 'pm-kakaxi');
 });
 
 test('finalizes a specialist bundle through the public CLI', () => {

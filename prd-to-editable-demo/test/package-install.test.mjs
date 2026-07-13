@@ -15,6 +15,7 @@ test('packaged Skill installs without a wrapper directory and runs independently
   const unzipResult = spawnSync('unzip', ['-q', archive, '-d', installed], { encoding: 'utf8' });
   assert.equal(unzipResult.status, 0, unzipResult.stderr);
   assert.match(readFileSync(join(installed, 'SKILL.md'), 'utf8'), /name: prd-to-editable-demo/);
+  assert.match(readFileSync(join(installed, 'bin', 'verify-specialist.mjs'), 'utf8'), /verifySpecialistRender/);
 
   const run = spawnSync(process.execPath, [
     join(installed, 'bin', 'prd-to-editable-demo.mjs'),

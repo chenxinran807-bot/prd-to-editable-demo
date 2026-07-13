@@ -8,6 +8,8 @@ export const specialistRuntimeSource = String.raw`
   let comments = JSON.parse(localStorage.getItem(storageKey + ':comments') || '[]');
   let history = { snapshots: [structuredClone(patches)], index: 0 };
   const $ = selector => document.querySelector(selector);
+  const editUi = $('#proto-edit-ui');
+  const revealEditor = () => { editUi.hidden = false; };
   const candidateSelector = '[data-proto-key],h1,h2,h3,h4,p,button,a,label,[role="button"]';
   let candidates = [];
   const originals = new Map();
@@ -93,6 +95,10 @@ export const specialistRuntimeSource = String.raw`
     $('#proto-agent-request').value = ''; $('#proto-agent-status').textContent = '修改任务已保存';
   });
   ['proto-edit-text','proto-edit-color','proto-edit-background','proto-edit-hidden','proto-edit-disabled'].forEach(id => $('#' + id).addEventListener('change', update));
+  if (new URLSearchParams(location.search).get('edit') === '1' || location.hash === '#edit') revealEditor();
+  document.addEventListener('keydown', event => {
+    if (event.altKey && event.shiftKey && event.key.toLowerCase() === 'e') revealEditor();
+  });
   refreshCandidates(); applyAll();
   new MutationObserver(refreshCandidates).observe(document.body, { childList: true, subtree: true });
 })();`;

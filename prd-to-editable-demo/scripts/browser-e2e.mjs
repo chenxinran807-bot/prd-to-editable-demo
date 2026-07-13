@@ -9,6 +9,7 @@ import { parsePrd } from '../src/parse-prd.mjs';
 import { renderDemo } from '../src/render-demo.mjs';
 import { writeOutput } from '../src/write-output.mjs';
 import { finalizeSpecialistResult } from '../src/finalize-specialist.mjs';
+import { verifySpecialistRender } from '../src/verify-specialist-render.mjs';
 
 const require = createRequire(import.meta.url);
 
@@ -33,10 +34,17 @@ export async function runBrowserE2E() {
   const specialistOutput = join(work, 'specialist-output');
   await mkdir(specialistSource, { recursive: true });
   await writeFile(join(specialistSource, 'index.html'), '<!doctype html><html><head><style>.specialist{color:rgb(220,0,0)}</style></head><body><button class="specialist">专业按钮</button><div id="app"></div><script>setTimeout(()=>{document.querySelector("#app").innerHTML="<button>动态专业按钮</button>"},100)</script></body></html>');
-  await finalizeSpecialistResult({ sourceDir: specialistSource, outDir: specialistOutput, handoff: { routing: { selected: 'pm-kakaxi' }, requirements: { title: '高保真结果' } } });
+  const criteria = ['visual evidence priority', 'generation gating', 'structured demo context', 'facts, inferences and gaps'];
+  await finalizeSpecialistResult({ sourceDir: specialistSource, outDir: specialistOutput, handoff: {
+    routing: { selected: 'pm-kakaxi' }, requirements: { title: '高保真结果' },
+    specialistEvidence: criteria.map(criterion => ({ criterion, evidence: `browser fixture: ${criterion}` }))
+  } });
+  const specialistQuality = await verifySpecialistRender({ deliveryDir: specialistOutput, waitMs: 180 });
+  assert.equal(specialistQuality.status, 'completed');
   const server = createServer(async (request, response) => {
-    const file = request.url === '/specialist' ? join(specialistOutput, 'index.html') : join(output, 'index.html');
-    if (!['/', '/index.html', '/specialist'].includes(request.url)) { response.writeHead(404).end(); return; }
+    const pathname = new URL(request.url, 'http://127.0.0.1').pathname;
+    const file = pathname === '/specialist' ? join(specialistOutput, 'index.html') : pathname === '/specialist-original' ? join(specialistOutput, 'index.original.html') : join(output, 'index.html');
+    if (!['/', '/index.html', '/specialist', '/specialist-original'].includes(pathname)) { response.writeHead(404).end(); return; }
     response.setHeader('content-type', 'text/html; charset=utf-8');
     response.end(await readFile(file));
   });
@@ -85,7 +93,14 @@ export async function runBrowserE2E() {
     await page.reload();
     assert.equal(await page.locator('[data-proto-key="review.title"]').textContent(), '确认审核内容');
 
+    await page.goto(`http://127.0.0.1:${server.address().port}/specialist-original`);
+    await page.waitForTimeout(180);
+    const originalPixels = await page.screenshot();
     await page.goto(`http://127.0.0.1:${server.address().port}/specialist`);
+    await page.waitForTimeout(180);
+    assert.equal(await page.locator('#proto-edit-ui').isHidden(), true);
+    assert.deepEqual(await page.screenshot(), originalPixels);
+    await page.goto(`http://127.0.0.1:${server.address().port}/specialist?edit=1`);
     const specialistButton = page.getByRole('button', { name: '专业按钮', exact: true });
     assert.equal(await specialistButton.evaluate(element => getComputedStyle(element).color), 'rgb(220, 0, 0)');
     await page.locator('#proto-edit-toggle').click();
@@ -99,7 +114,7 @@ export async function runBrowserE2E() {
     const dynamicButton = page.getByRole('button', { name: '动态专业按钮' });
     await dynamicButton.click();
     assert.match(await page.locator('#proto-selected-key').textContent(), /^specialist\./);
-    return { passed: true, checks: ['scenario-switch', 'navigation', 'edit', 'undo', 'redo', 'agent-comment', 'patch-export', 'comment-export', 'reload-persistence', 'specialist-style-preservation', 'specialist-direct-edit', 'specialist-reload-persistence', 'specialist-dynamic-dom'] };
+    return { passed: true, checks: ['scenario-switch', 'navigation', 'edit', 'undo', 'redo', 'agent-comment', 'patch-export', 'comment-export', 'reload-persistence', 'specialist-default-ui-hidden', 'specialist-pixel-preservation', 'specialist-style-preservation', 'specialist-direct-edit', 'specialist-reload-persistence', 'specialist-dynamic-dom', 'specialist-quality-completed-after-render-verification'] };
   } finally {
     server.closeAllConnections();
     await new Promise(resolve => server.close(resolve));

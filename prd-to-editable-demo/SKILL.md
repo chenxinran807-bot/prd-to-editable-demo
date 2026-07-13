@@ -14,7 +14,7 @@ description: 将 PRD、产品需求文字或需求文档快速转成零依赖、
 3. 把推断写入 `assumptions.md`，不要冒充 PRD 事实。
 4. 默认生成零外部依赖的 `index.html`，不得依赖 CDN。
 5. 每个可编辑元素使用稳定、唯一的 `data-proto-key`。
-6. 同一任务只选择一个执行路径，不串行套用多个完整原型 Skill。
+6. 简单任务只走一个快速路径；复杂富媒体 PRD 最多使用“需求理解 → 专业原型”两个阶段，不重复调用多个同类原型 Skill。
 
 ## 先理解，再画页面
 
@@ -63,7 +63,8 @@ npm test
 
 统一入口先输出路由判断。命中专业场景时，CLI 生成 `specialist-handoff.json` 后以状态码 3 停止；Agent 必须读取交接包并调用指定 Skill，完成后再用本 Skill 的统一交付结构补齐可编辑能力和验收记录。不得静默降级为本地模板，不得把临时草稿宣称为专业结果。
 
-- 复杂旅程、多角色、多状态或偏产品方案的 PRD：`prd-generator` 先完成产品级需求理解。
+- 复杂旅程、多角色、多状态或偏产品方案的纯文本 PRD：`prd-generator` 完成产品级需求理解及伴生原型。
+- 复杂 PRD 同时包含截图、图片或视觉证据：先用 `prd-generator` 形成结构化需求上下文，再由 `pm-kakaxi-skills` 完成高保真原型；前一阶段不是另一套竞争原型，而是后一阶段的输入。
 - 截图、设计稿、组件库或高保真要求：`pm-kakaxi-skills` 接管视觉与交互还原。
 - 明确要求工程化 React、内部组件库或研发交付：`vne-prototype` 接管。
 - 明确要求 Inspire 云端资产：`inspire-prototype` 接管。
@@ -81,10 +82,19 @@ npm test
 node bin/finalize-specialist.mjs \
   --source <专业结果目录> \
   --handoff <specialist-handoff.json> \
+  --evidence <已填写的 specialist-evidence.json> \
   --out <统一交付目录>
 ```
 
-统一目录中的 `index.html` 是注入直接编辑、撤销重做、补丁和 Agent 修改任务后的版本；`index.original.html` 是未注入的专业原版，其余 CSS、JS 和素材原样复制。预览质量以原版为基线，统一层不得用本地模板覆盖专业页面。
+统一目录中的 `index.html` 是注入直接编辑、撤销重做、补丁和 Agent 修改任务后的版本；默认演示不显示编辑工具，地址添加 `?edit=1` 或按 Alt+Shift+E 后才显示。`index.original.html` 是未注入的专业原版，其余 CSS、JS 和素材原样复制。预览质量以原版为基线，统一层不得用本地模板覆盖专业页面。
+
+随后必须运行渲染保真验证：
+
+```bash
+node bin/verify-specialist.mjs --delivery <统一交付目录>
+```
+
+只有专业基线证据完整、原版与默认统一版像素一致、编辑层默认隐藏且按需可见时，`quality-report.json` 和 manifest 才能标记 `completed`；否则保持 `review-required`。
 
 若专业结果只提供远程 asset（如 Inspire），先使用该专业能力的官方导出命令取得代码包，再执行回收；无法取得本地 bundle 时保留原专业预览链接，并明确标记“远程编辑”，不得伪造本地可编辑交付。
 

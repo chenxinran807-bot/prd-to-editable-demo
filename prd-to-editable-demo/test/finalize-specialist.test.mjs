@@ -28,7 +28,7 @@ test('preserves the specialist bundle and emits a unified editable delivery', as
   assert.ok(quality.specialistBaseline.missing.length >= 3);
 });
 
-test('marks a specialist delivery complete only when every baseline has evidence', async () => {
+test('accepts baseline evidence but waits for rendered preservation before completion', async () => {
   const root = await mkdtemp(join(tmpdir(), 'specialist-evidence-'));
   const source = join(root, 'source');
   const output = join(root, 'output');
@@ -43,6 +43,7 @@ test('marks a specialist delivery complete only when every baseline has evidence
   await finalizeSpecialistResult({ sourceDir: source, outDir: output, handoff });
   const manifest = JSON.parse(await readFile(join(output, 'prototype.manifest.json'), 'utf8'));
   const quality = JSON.parse(await readFile(join(output, 'quality-report.json'), 'utf8'));
-  assert.equal(manifest.routing.status, 'completed');
+  assert.equal(manifest.routing.status, 'review-required');
   assert.deepEqual(quality.specialistBaseline.missing, []);
+  assert.equal(quality.renderPreservation.status, 'pending');
 });

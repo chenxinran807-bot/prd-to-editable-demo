@@ -32,7 +32,7 @@ export async function finalizeSpecialistResult({ sourceDir, outDir, handoff }) {
   const criteria = parity.specialists[specialist]?.mustPreserve ?? [];
   const evidence = new Map((handoff.specialistEvidence ?? []).map(item => [item.criterion, item.evidence]));
   const missing = criteria.length ? criteria.filter(criterion => typeof evidence.get(criterion) !== 'string' || !evidence.get(criterion).trim()) : ['unrecognized specialist baseline'];
-  const status = missing.length ? 'review-required' : 'completed';
+  const status = 'review-required';
   const manifest = {
     schemaVersion: 1, id: manifestId,
     product: { name: handoff.requirements?.title ?? '专业原型', goal: handoff.requirements?.goal ?? '完成专业原型评审' },
@@ -52,10 +52,11 @@ export async function finalizeSpecialistResult({ sourceDir, outDir, handoff }) {
       criteria,
       verified: criteria.filter(criterion => !missing.includes(criterion)).map(criterion => ({ criterion, evidence: evidence.get(criterion) })),
       missing
-    }
+    },
+    renderPreservation: { status: 'pending', reason: 'run verify-specialist after finalization' }
   };
   await writeFile(`${staging}/quality-report.json`, JSON.stringify(qualityReport, null, 2));
-  await writeFile(`${staging}/demo-summary.md`, `# 专业原型统一交付\n\n- 专业能力：${specialist}\n- 验收状态：${status}\n- 可编辑版本：index.html\n- 原始版本：index.original.html\n- 处理原则：保留专业产物与素材，只注入统一编辑和反馈层。\n- 专业基线证据：quality-report.json\n`);
+  await writeFile(`${staging}/demo-summary.md`, `# 专业原型统一交付\n\n- 专业能力：${specialist}\n- 验收状态：${status}\n- 演示版本：index.html（默认不显示编辑工具，保持专业原型视觉）\n- 编辑入口：在地址后添加 \`?edit=1\`，或按 Alt+Shift+E\n- 原始版本：index.original.html\n- 处理原则：保留专业产物与素材，只注入按需启用的编辑和反馈层。\n- 专业基线证据：quality-report.json\n`);
   await rm(output, { recursive: true, force: true });
   await rename(staging, output);
   return { output, files: await listFiles(output) };

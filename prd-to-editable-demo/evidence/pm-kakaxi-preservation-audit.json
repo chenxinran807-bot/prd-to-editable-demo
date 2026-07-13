@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "auditedAt": "2026-07-13",
+  "sourceArtifact": {
+    "kind": "existing-independent-specialist-sample",
+    "skill": "pm-kakaxi",
+    "sha256": "4c6860c320b0c6f1911fa34482589f9a719485d7ededc87ff51d6d06c56b0ca3",
+    "benchmark": {
+      "statesExpected": 12,
+      "statesPreserved": 12,
+      "transitionsExpected": 15,
+      "transitionsPreserved": 15
+    }
+  },
+  "specialistEvidence": [
+    {
+      "criterion": "visual evidence priority",
+      "evidence": "demo-context.json maps six screenshot sources and one flow baseline into page, visual and interaction inventories with confidence levels."
+    },
+    {
+      "criterion": "generation gating",
+      "evidence": "sample-manifest.json preserves all 12 benchmark states and all 15 benchmark transitions; validate-sample.mjs passed with zero missing entries."
+    },
+    {
+      "criterion": "structured demo context",
+      "evidence": "demo-context.json contains page_units, visual_inventory, interaction_inventory, state_matrix and evidence_sources."
+    },
+    {
+      "criterion": "facts, inferences and gaps",
+      "evidence": "demo-context.json records per-item source/confidence plus open_questions and do_not_infer lists."
+    }
+  ],
+  "renderPreservation": {
+    "viewport": { "width": 390, "height": 844 },
+    "pixelIdentical": true,
+    "originalSha256": "d8756aa4caf45130edda3aeaa3b363315d16ae2ecb4c0e2aa452d082e65ad78b",
+    "editableDefaultSha256": "d8756aa4caf45130edda3aeaa3b363315d16ae2ecb4c0e2aa452d082e65ad78b",
+    "editorHiddenByDefault": true,
+    "editorVisibleOnDemand": true
+  }
+}

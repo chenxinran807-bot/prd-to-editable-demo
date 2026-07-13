@@ -17,6 +17,7 @@ test('explicit Open Design or Huashu Design intent preserves the design workspac
 
 test('complete flow assets plus pixel fidelity select figma flow', () => {
   assert.equal(selectRoute({ intent: '按切图像素级还原', assets: ['01-flow.png', 'button.png'] }).id, 'figma-flow');
+  assert.equal(selectRoute({ intent: '按 Figma 切图像素级还原', assets: ['checkout-screen.png', 'button-slice.png'] }).id, 'figma-flow');
 });
 
 test('ordinary PRD uses the local fast path', () => {
@@ -42,4 +43,11 @@ test('complex product journey routes to PRD understanding specialist', () => {
 test('large PRD source routes away from the low-fidelity fallback', () => {
   const source = `${'## 模块\n需求状态处理中，删除后支持重试。\n'.repeat(5)}`;
   assert.equal(selectRoute({ intent: '', assets: [], source }).id, 'prd-generator');
+});
+
+test('complex rich-document PRD uses understanding then high-fidelity stages', () => {
+  const source = `${'## 模块\n需求状态处理中，删除后支持重试。\n'.repeat(5)}\n![参考界面](screen.png)`;
+  const route = selectRoute({ intent: '', assets: [], source });
+  assert.equal(route.id, 'pm-kakaxi');
+  assert.deepEqual(route.stages, ['prd-generator', 'pm-kakaxi']);
 });

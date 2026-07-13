@@ -27,6 +27,8 @@ node prd-to-editable-demo/bin/prd-to-editable-demo.mjs \
 
 专业 Skill 产出本地 HTML bundle 后，可运行 `node bin/finalize-specialist.mjs --source <专业结果目录> --handoff <交接包> --out <统一交付目录>`。该步骤保留专业原型及所有素材，并生成可直接编辑的 `index.html`；未经注入的原版保存在 `index.original.html`。
 
+专业场景会同时生成 `specialist-evidence.template.json`。填写证据后用 `--evidence` 传给回收命令，再运行 `node bin/verify-specialist.mjs --delivery <统一交付目录>`。默认打开不显示编辑工具且必须与专业原版像素一致；添加 `?edit=1` 或按 Alt+Shift+E 才进入编辑入口。只有专业基线和渲染保真都通过，状态才会成为 `completed`。
+
 ## MVP 使用流程
 
 1. 准备一个 Markdown 或纯文本 PRD。
