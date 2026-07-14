@@ -52,3 +52,22 @@ test('Skill requires model-semantic extraction and treats heuristics only as low
   assert.match(source, /不得.*词表.*核心/);
   assert.doesNotMatch(source, /AI 试穿的入口|拍照浮层|相机拍照页/);
 });
+
+test('Skill is a standalone core and treats discovered tools only as optional enhancements', async () => {
+  const source = await readFile(new URL('../SKILL.md', import.meta.url), 'utf8');
+  assert.match(source, /单一安装|单 Skill/);
+  assert.match(source, /capability-policy\.md/);
+  assert.match(source, /未安装.*不影响.*核心|不依赖.*其他.*Skill/);
+  assert.match(source, /专业模式.*Inspire/);
+  assert.doesNotMatch(source, /`prd-generator`、`pm-kakaxi-skills`/);
+});
+
+test('Skill ships domain-neutral professional design references', async () => {
+  const source = await readFile(new URL('../SKILL.md', import.meta.url), 'utf8');
+  for (const name of ['interaction-design.md', 'visual-quality.md', 'quality-gates.md']) assert.match(source, new RegExp(name));
+  for (const name of ['interaction-design.md', 'visual-quality.md', 'quality-gates.md']) {
+    const reference = await readFile(new URL(`../references/${name}`, import.meta.url), 'utf8');
+    assert.match(reference, /状态|交互|视觉|验收/);
+    assert.doesNotMatch(reference, /AI 试穿的入口|拍照浮层|相机拍照页/);
+  }
+});

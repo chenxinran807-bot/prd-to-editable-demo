@@ -5,7 +5,7 @@ description: Use when a user asks to turn a PRD, requirement document, screensho
 
 # PRD To Editable Demo
 
-这是 PRD 到可编辑交互原型的统一入口。先形成可追溯的需求模型，再按输入调用最少的专业能力；专业场景始终以 Inspire 作为最终原型容器，避免生成多套互相竞争的结果。
+这是 PRD 到可编辑交互原型的单 Skill、单一安装入口。先形成可追溯的需求模型，再生成和验收；专业场景始终以 Inspire 作为最终原型容器，避免生成多套互相竞争的结果。
 
 ## 工作原则
 
@@ -13,7 +13,9 @@ description: Use when a user asks to turn a PRD, requirement document, screensho
 2. 需求模型至少包含用户角色、目标、业务对象、用户动作、状态/分支、事实证据、推断和缺口。
 3. 页面、控件和跳转必须可追溯到需求模型。禁止用“功能首页”“操作结果”“继续”等空洞占位词冒充理解。
 4. 简单、低保真评审可走本地 HTML 快速路径；复杂、多状态、高保真或品牌场景必须进入专业路径，不得静默降级。
-5. 专业路径中，`prd-generator`、`pm-kakaxi-skills`、Open Design、花叔 Design、`figma-flow-to-html-demo`、`vne-prototype` 只提供适用的理解、视觉或工程输入；Inspire 是唯一最终容器。
+5. 核心交付不依赖宿主另行安装其他同类 Skill；未安装任何外部增强也不影响核心能力。运行时真实发现并成功调用的工具只能作为可验证增强，不能替代本 Skill 的责任。
+
+执行前读取 [capability-policy.md](references/capability-policy.md)。完成语义结构后，按任务需要读取 [interaction-design.md](references/interaction-design.md)、[visual-quality.md](references/visual-quality.md) 和 [quality-gates.md](references/quality-gates.md)。这些文件是随包提供的专业能力协议，不是外部依赖。
 
 ## 语义理解协议（必须先执行）
 
@@ -37,6 +39,11 @@ node bin/prd-to-editable-demo.mjs --prd <prd-path> --out <output-directory>
 ```
 
 可重复传入 `--asset <素材路径>`，也可使用 `--intent` 和 `--url`。若输出 `specialist-handoff.json` 并以状态码 3 结束，这是专业接管信号，不是失败。
+
+## 交付模式
+
+- **专业模式**：用户要求高保真、原生感、品牌质量或 Inspire 编辑时使用。Inspire 是正式最终容器；缺少授权或业务设计能力时保存进度并请求补齐，不得静默降级成本地正式交付。
+- **快速评审模式**：只有用户明确优先速度、接受可演示初版时使用。本地 HTML 仍须使用语义需求模型、完整主流程、内部交互与视觉规则以及可编辑运行时，并明确标记为非正式交付。
 
 ## 专业交付到 Inspire
 
