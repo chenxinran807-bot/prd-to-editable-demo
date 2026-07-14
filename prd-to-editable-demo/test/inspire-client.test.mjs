@@ -105,6 +105,18 @@ test('generation adapter preserves JSON events while tolerating an appended huma
   assert.deepEqual(result.ignoredOutput, ['# Inspire Prototype E2E Report', '- Preview: https://preview/current']);
 });
 
+test('generation adapter accepts the current direct terminal report shape', async () => {
+  const terminal = {
+    assetId: 'asset-direct', status: 'success', previewUrl: 'https://preview/direct',
+    skillTrace: { activatedSkills: [], openedSkills: [] },
+    e2eReport: { assetId: 'asset-direct', status: 'success', previewUrl: 'https://preview/direct' }
+  };
+  const client = createInspireClient({ run: scriptedRunner([{ stdout: JSON.stringify(terminal) }]).run });
+  const result = await client.generate({ prompt: '生成原型', designSkill: 'public:mobile@1' });
+  assert.equal(result.assetId, 'asset-direct');
+  assert.equal(result.previewUrl, 'https://preview/direct');
+});
+
 test('generation fails closed when the exact business Skill was not opened', async () => {
   const fake = scriptedRunner([{ stdout: JSON.stringify({
     type: 'done', status: 'success', assetId: 'asset-fallback',

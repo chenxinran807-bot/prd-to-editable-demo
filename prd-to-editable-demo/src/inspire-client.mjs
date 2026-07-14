@@ -129,8 +129,13 @@ export function createInspireClient({ run = defaultRun, command = 'inspire-proto
       for (const file of plan.files ?? []) args.push('--file', file);
       args.push('--type', plan.outputType ?? 'html', '--wait', '--report', 'json', '--fail-on-generation-error', '--json');
       const { events, ignoredOutput } = parseNdjson(await execute(args));
-      const rawDone = [...events].reverse().find(event => event.type === 'done');
-      const done = rawDone?.result ?? rawDone;
+      const rawDone = [...events].reverse().find(event =>
+        event.type === 'done' || (event.status && (event.assetId || event.e2eReport?.assetId))
+      );
+      const direct = rawDone?.result ?? rawDone;
+      const done = direct?.e2eReport
+        ? { ...direct.e2eReport, ...direct, skillTrace: direct.skillTrace ?? direct.e2eReport.skillTrace }
+        : direct;
       if (!done) throw new InspireClientError('malformed_output', 'generation NDJSON is missing a done event');
       if (done.status !== 'success') throw new InspireClientError('generation_failed', 'Inspire prototype generation did not succeed', { status: done.status, assetId: done.assetId });
       if (!done.assetId) throw new InspireClientError('malformed_output', 'successful generation is missing assetId');
