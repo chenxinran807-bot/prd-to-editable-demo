@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { analyzeRequirements, parsePrd } from '../src/parse-prd.mjs';
 import { validateSemanticRequirements } from '../src/semantic-requirements.mjs';
 import { semanticRequirementsToModel } from '../src/semantic-to-model.mjs';
+import { compileAcceptanceContract } from '../src/acceptance-contract.mjs';
 import { selectRoute } from '../src/select-route.mjs';
 import { renderDemo } from '../src/render-demo.mjs';
 import { writeOutput } from '../src/write-output.mjs';
@@ -36,6 +37,7 @@ export async function main(argv = process.argv.slice(2)) {
     ? validateSemanticRequirements(JSON.parse(await readFile(requirementsPath, 'utf8')), source)
     : analyzeRequirements(source);
   const route = selectRoute({ intent: options.intent, assets: options.assets, source, url: options.url });
+  const auditRequirements = compileAcceptanceContract(requirements);
   if (route.deliveryMode === 'professional') {
     const missing = ['screens', 'transitions'].filter(field => !Array.isArray(requirements[field]) || requirements[field].length === 0);
     if (missing.length) {
@@ -65,6 +67,7 @@ export async function main(argv = process.argv.slice(2)) {
       schemaVersion: 1,
       routing: { selected: route.id, stages, reason: route.reason, handoff: stages.map(id => `use-${id}-skill`).join('-then-'), status: 'required' },
       requirements,
+      auditRequirements,
       inputs: { prd: resolve(options.prd), semanticRequirements: requirementsPath, assets: options.assets.map(asset => resolve(asset)), referenceUrl: options.url ?? null },
       qualityAssurance: { mode: route.deliveryMode, finalContainer: 'inspire', silentDowngradeAllowed: false, readiness: 'preflight-required' },
       specialistPlan,

@@ -104,6 +104,12 @@ test('uses agent-produced semantic IR instead of heuristic dictionaries for spec
   const handoff = JSON.parse(readFileSync(join(out, 'specialist-handoff.json'), 'utf8'));
   assert.equal(handoff.requirements.extractionMode, 'model-semantic');
   assert.deepEqual(handoff.requirements.screens, ['样品提交', '舱位审核', '分配结果']);
+  assert.deepEqual(handoff.auditRequirements.actions, ['提交', '审核', '分配']);
+  assert.deepEqual(handoff.auditRequirements.states, ['待审核', '已分配']);
+  assert.deepEqual(handoff.auditRequirements.screens, ['样品提交', '舱位审核', '分配结果']);
+  assert.deepEqual(handoff.auditRequirements.frozenTasks[0].observableOutcome, {
+    kind: 'destination-content', value: '舱位审核', urlChangeAloneIsInsufficient: true
+  });
 });
 
 test('uses semantic screens and transitions on the local editable path', () => {
