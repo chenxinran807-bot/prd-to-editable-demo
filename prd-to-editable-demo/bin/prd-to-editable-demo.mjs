@@ -12,6 +12,8 @@ import { renderDemo } from '../src/render-demo.mjs';
 import { writeOutput } from '../src/write-output.mjs';
 import { createInspireClient } from '../src/inspire-client.mjs';
 import { runProfessionalWorkflow } from '../src/professional-workflow.mjs';
+import { buildDemoContext } from '../src/demo-context.mjs';
+import { resolveDesignCore } from '../src/ecommerce-design-core.mjs';
 
 export function parseArgs(argv) {
   const options = { assets: [], resumeCandidates: {} };
@@ -63,7 +65,7 @@ export async function main(argv = process.argv.slice(2)) {
       return 4;
     }
   }
-  if (route.id !== 'local') {
+  if (route.id === 'inspire') {
     const output = resolve(options.out);
     const parity = JSON.parse(await readFile(new URL('../references/capability-parity.json', import.meta.url), 'utf8'));
     const specialistBaseline = parity.capabilities.inspire;
@@ -131,9 +133,11 @@ export async function main(argv = process.argv.slice(2)) {
     return 0;
   }
   const manifest = requirementsPath ? semanticRequirementsToModel(requirements) : parsePrd(source);
-  manifest.delivery = { mode: route.deliveryMode, formal: false };
-  manifest.routing = { selected: route.id, reason: route.reason, handoff: route.id === 'local' ? 'local-fast-path' : `use-${route.id}-skill` };
-  if (route.id !== 'local') manifest.assumptions.push({ id: 'route-fallback', statement: `专业路径 ${route.id} 尚未接入，使用本地生成`, source: 'router' });
+  const designCore = JSON.parse(await readFile(new URL('../references/ecommerce-design-core.json', import.meta.url), 'utf8'));
+  manifest.demoContext = buildDemoContext({ requirements, source });
+  manifest.designCore = resolveDesignCore({ requirements, core: designCore });
+  manifest.delivery = { mode: route.deliveryMode, formal: route.deliveryMode === 'professional', container: 'embedded-html', inspireOptional: true };
+  manifest.routing = { selected: route.id, reason: route.reason, handoff: route.id === 'direct' ? 'direct-codegen' : 'local-fast-path' };
   const html = renderDemo(manifest);
   const result = await writeOutput({ outDir: options.out, html, manifest });
   process.stdout.write(`${result.output}/index.html\n`);

@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-test('professional public entry continues through three real candidate results', () => {
+test('explicit Inspire export remains available as an optional path', () => {
   const root = mkdtempSync(join(tmpdir(), 'professional-public-cli-'));
   const fake = join(root, 'fake-inspire.mjs');
   const counter = join(root, 'counter.txt');
@@ -31,6 +31,7 @@ else process.exit(4);
     'bin/prd-to-editable-demo.mjs',
     '--prd', 'fixtures/commerce-checkout-prd.md',
     '--requirements', 'fixtures/commerce-checkout-requirements.json',
+    '--intent', '在 Inspire 编辑并发布',
     '--out', out
   ], {
     cwd: new URL('..', import.meta.url), encoding: 'utf8',

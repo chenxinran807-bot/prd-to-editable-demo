@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "principle": "One installed Skill owns the complete core; Inspire is the verified professional container.",
+  "principle": "One installed Skill directly generates the professional core; Inspire is an optional deep-edit and hosting adapter.",
   "capabilities": {
     "semantic-understanding": {
       "useWhen": ["every PRD or product requirement"],
@@ -23,9 +23,9 @@
       "deliveryPolicy": "standalone-core"
     },
     "inspire": {
-      "useWhen": ["professional, native, branded, high-fidelity, or Inspire-editable delivery"],
+      "useWhen": ["the user explicitly requests Inspire editing, hosting, inbox, or team canvas collaboration"],
       "mustPreserve": ["official CLI generation", "exact opened and activated business design Skill", "asset identity and accepted parent", "preview and inbox links"],
-      "deliveryPolicy": "professional-container"
+      "deliveryPolicy": "optional-adapter"
     }
   }
 }

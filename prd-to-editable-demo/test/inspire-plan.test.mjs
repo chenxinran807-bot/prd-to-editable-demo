@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { buildInspirePlan } from '../src/inspire-plan.mjs';
 import { selectRoute } from '../src/select-route.mjs';
 
-test('professional rich PRDs end in Inspire without peer-Skill stages', () => {
+test('professional rich PRDs default to direct generation', () => {
   const source = `${'## 状态\n失败后重试。\n'.repeat(8)}\n![界面](screen.png)`;
   const route = selectRoute({ source });
-  assert.equal(route.id, 'inspire');
-  assert.equal(route.finalContainer, 'inspire');
-  assert.deepEqual(route.stages, ['inspire']);
+  assert.equal(route.id, 'direct');
+  assert.equal(route.finalContainer, 'embedded-html');
+  assert.ok(route.stages.includes('browser-qa'));
 });
 
 test('builds a reproducible first-generation Inspire plan', () => {

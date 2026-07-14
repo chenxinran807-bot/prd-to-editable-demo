@@ -54,7 +54,7 @@ test('generates the complete editable demo deliverable', () => {
   assert.match(result.stdout, /index\.html/);
 });
 
-test('keeps the internal handoff but blocks professional delivery when no business Skill is visible', () => {
+test('professional direct delivery does not require an Inspire business Skill', () => {
   const root = mkdtempSync(join(tmpdir(), 'editable-demo-route-'));
   const prd = join(root, 'strategy-prd.md');
   const out = join(root, 'output');
@@ -63,24 +63,16 @@ test('keeps the internal handoff but blocks professional delivery when no busine
     'bin/prd-to-editable-demo.mjs', '--prd', prd, '--out', out
   ], { cwd: new URL('..', import.meta.url), encoding: 'utf8', env: { ...process.env, INSPIRE_PROTOTYPE_BIN: blockedInspire(root) } });
 
-  assert.equal(result.status, 6, result.stderr);
-  assert.match(result.stderr, /少于两个/);
-  assert.throws(() => readFileSync(join(out, 'index.html'), 'utf8'));
-  const handoff = JSON.parse(readFileSync(join(out, 'specialist-handoff.json'), 'utf8'));
-  const evidenceTemplate = JSON.parse(readFileSync(join(out, 'specialist-evidence.template.json'), 'utf8'));
-  assert.equal(handoff.routing.selected, 'inspire');
-  assert.ok(handoff.requirements.businessObjects.includes('照片'));
-  assert.ok(handoff.requirements.userActions.includes('上传'));
-  assert.ok(handoff.specialistBaseline.mustPreserve.length >= 3);
-  assert.ok(handoff.specialistBaseline.mustPreserve.every(item => handoff.acceptance.includes(item)));
-  assert.deepEqual(handoff.routing.stages, ['inspire']);
-  assert.deepEqual(handoff.specialistPlan.map(item => item.id), ['semantic-understanding', 'interaction-design', 'visual-quality', 'editable-runtime', 'inspire']);
-  assert.ok(handoff.specialistPlan.flatMap(item => item.baseline.mustPreserve).every(criterion => handoff.acceptance.includes(criterion)));
-  assert.deepEqual(evidenceTemplate.specialistEvidence.map(item => item.criterion), [...new Set(handoff.specialistPlan.flatMap(item => item.baseline.mustPreserve))]);
-  assert.ok(evidenceTemplate.specialistEvidence.every(item => item.evidence === ''));
+  assert.equal(result.status, 0, result.stderr);
+  const manifest = JSON.parse(readFileSync(join(out, 'prototype.manifest.json'), 'utf8'));
+  const context = JSON.parse(readFileSync(join(out, 'demo-context.json'), 'utf8'));
+  assert.equal(manifest.routing.selected, 'direct');
+  assert.equal(manifest.delivery.container, 'embedded-html');
+  assert.equal(manifest.delivery.inspireOptional, true);
+  assert.ok(context.product.businessObjects.includes('照片'));
 });
 
-test('resolves repeated specialist asset paths without passing mapper metadata to path.resolve', () => {
+test('visual evidence requests still complete on the direct path without Inspire', () => {
   const root = mkdtempSync(join(tmpdir(), 'editable-demo-assets-'));
   const prd = join(root, 'visual-prd.md');
   const asset = join(root, 'checkout-screen.png');
@@ -91,14 +83,13 @@ test('resolves repeated specialist asset paths without passing mapper metadata t
     'bin/prd-to-editable-demo.mjs', '--prd', prd, '--asset', asset, '--out', out
   ], { cwd: new URL('..', import.meta.url), encoding: 'utf8', env: { ...process.env, INSPIRE_PROTOTYPE_BIN: blockedInspire(root) } });
 
-  assert.equal(result.status, 6, result.stderr);
-  const handoff = JSON.parse(readFileSync(join(out, 'specialist-handoff.json'), 'utf8'));
-  assert.deepEqual(handoff.inputs.assets, [asset]);
-  assert.equal(handoff.routing.selected, 'inspire');
-  assert.deepEqual(handoff.routing.stages, ['inspire']);
+  assert.equal(result.status, 0, result.stderr);
+  const manifest = JSON.parse(readFileSync(join(out, 'prototype.manifest.json'), 'utf8'));
+  assert.equal(manifest.routing.selected, 'direct');
+  assert.equal(manifest.delivery.formal, true);
 });
 
-test('uses agent-produced semantic IR instead of heuristic dictionaries for specialist handoff', () => {
+test('uses agent-produced semantic IR in the direct demo context', () => {
   const root = mkdtempSync(join(tmpdir(), 'semantic-handoff-'));
   const prd = join(root, 'prd.md');
   const requirements = join(root, 'requirements.json');
@@ -123,16 +114,12 @@ test('uses agent-produced semantic IR instead of heuristic dictionaries for spec
     'bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements', requirements, '--intent', '高保真原型', '--out', out
   ], { cwd: new URL('..', import.meta.url), encoding: 'utf8', env: { ...process.env, INSPIRE_PROTOTYPE_BIN: blockedInspire(root) } });
 
-  assert.equal(result.status, 6, result.stderr);
-  const handoff = JSON.parse(readFileSync(join(out, 'specialist-handoff.json'), 'utf8'));
-  assert.equal(handoff.requirements.extractionMode, 'model-semantic');
-  assert.deepEqual(handoff.requirements.screens, ['样品提交', '舱位审核', '分配结果']);
-  assert.deepEqual(handoff.auditRequirements.actions, ['提交', '审核', '分配']);
-  assert.deepEqual(handoff.auditRequirements.states, ['待审核', '已分配']);
-  assert.deepEqual(handoff.auditRequirements.screens, ['样品提交', '舱位审核', '分配结果']);
-  assert.deepEqual(handoff.auditRequirements.frozenTasks[0].observableOutcome, {
-    kind: 'destination-content', value: '舱位审核', urlChangeAloneIsInsufficient: true
-  });
+  assert.equal(result.status, 0, result.stderr);
+  const context = JSON.parse(readFileSync(join(out, 'demo-context.json'), 'utf8'));
+  assert.deepEqual(context.pageUnits.map(item => item.name), ['样品提交', '舱位审核', '分配结果']);
+  assert.deepEqual(context.interactionInventory.map(item => item.trigger), ['提交']);
+  assert.deepEqual(context.stateMatrix.map(item => item.label), ['待审核', '已分配']);
+  assert.match(context.evidenceSources.at(-1).content, /研究员提交样品/u);
 });
 
 test('uses semantic screens and transitions on the local editable path', () => {
@@ -184,16 +171,16 @@ test('finalizes a specialist bundle through the public CLI', () => {
   assert.match(result.stdout, /index\.html/);
 });
 
-test('professional handoff forbids silent downgrade and fast review is marked non-formal', () => {
+test('professional direct output is formal while fast review remains non-formal', () => {
   const professionalRoot = mkdtempSync(join(tmpdir(), 'professional-mode-'));
   writeFileSync(join(professionalRoot, 'prd.md'), '# 专业原型\n申请入口页 → 申请提交页 → 申请结果页\n用户提交申请并查看结果。');
   const professional = spawnSync(process.execPath, [
     'bin/prd-to-editable-demo.mjs', '--prd', join(professionalRoot, 'prd.md'), '--intent', '原生高保真', '--out', join(professionalRoot, 'out')
   ], { cwd: new URL('..', import.meta.url), encoding: 'utf8', env: { ...process.env, INSPIRE_PROTOTYPE_BIN: blockedInspire(professionalRoot) } });
-  assert.equal(professional.status, 6, professional.stderr);
-  const handoff = JSON.parse(readFileSync(join(professionalRoot, 'out', 'specialist-handoff.json'), 'utf8'));
-  assert.deepEqual(handoff.qualityAssurance, {
-    mode: 'professional', finalContainer: 'inspire', silentDowngradeAllowed: false, readiness: 'preflight-required'
+  assert.equal(professional.status, 0, professional.stderr);
+  const professionalManifest = JSON.parse(readFileSync(join(professionalRoot, 'out', 'prototype.manifest.json'), 'utf8'));
+  assert.deepEqual(professionalManifest.delivery, {
+    mode: 'professional', formal: true, container: 'embedded-html', inspireOptional: true
   });
 
   const fastRoot = mkdtempSync(join(tmpdir(), 'fast-mode-'));
@@ -203,7 +190,7 @@ test('professional handoff forbids silent downgrade and fast review is marked no
   ], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
   assert.equal(fast.status, 0, fast.stderr);
   const manifest = JSON.parse(readFileSync(join(fastRoot, 'out', 'prototype.manifest.json'), 'utf8'));
-  assert.deepEqual(manifest.delivery, { mode: 'fast-review', formal: false });
+  assert.deepEqual(manifest.delivery, { mode: 'fast-review', formal: false, container: 'embedded-html', inspireOptional: true });
 });
 
 test('professional mode blocks empty heuristic screens and transitions before Inspire', () => {

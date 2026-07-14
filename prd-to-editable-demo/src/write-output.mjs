@@ -13,6 +13,8 @@ export async function writeOutput({ outDir, html, manifest }) {
   const files = {
     'index.html': html,
     'prototype.manifest.json': JSON.stringify(manifest, null, 2),
+    'demo-context.json': JSON.stringify(manifest.demoContext ?? {}, null, 2),
+    'design-profile.json': JSON.stringify(manifest.designCore ?? {}, null, 2),
     'prototype.patches.json': JSON.stringify({ schemaVersion: 1, manifestId: manifest.id, patches: {} }, null, 2),
     'agent-comments.json': JSON.stringify({ schemaVersion: 1, manifestId: manifest.id, comments: [] }, null, 2),
     'demo-summary.md': summary,

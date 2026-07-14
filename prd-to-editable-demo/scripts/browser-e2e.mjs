@@ -37,6 +37,7 @@ export async function runBrowserE2E() {
   const criteria = ['visual evidence priority', 'generation gating', 'structured demo context', 'facts, inferences and gaps'];
   await finalizeSpecialistResult({ sourceDir: specialistSource, outDir: specialistOutput, handoff: {
     routing: { selected: 'pm-kakaxi' }, requirements: { title: '高保真结果' },
+    specialistBaseline: { mustPreserve: criteria },
     specialistEvidence: criteria.map(criterion => ({ criterion, evidence: `browser fixture: ${criterion}` }))
   } });
   const specialistQuality = await verifySpecialistRender({ deliveryDir: specialistOutput, waitMs: 180 });

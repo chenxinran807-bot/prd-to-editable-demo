@@ -10,6 +10,6 @@ test('capability contract describes the standalone core and Inspire without peer
   for (const [id, contract] of Object.entries(parity.capabilities)) {
     assert.ok(contract.useWhen.length > 0, `${id} needs routing evidence`);
     assert.ok(contract.mustPreserve.length >= 3, `${id} needs preservation gates`);
-    assert.match(contract.deliveryPolicy, /standalone-core|professional-container/);
+    assert.match(contract.deliveryPolicy, /standalone-core|optional-adapter/);
   }
 });

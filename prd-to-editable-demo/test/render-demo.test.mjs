@@ -30,3 +30,20 @@ test('escapes PRD text before embedding it into HTML', () => {
   assert.doesNotMatch(html, /<img src=x/);
   assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
 });
+
+test('professional ecommerce output uses matched native components without generic prototype chrome', () => {
+  const professional = structuredClone(model);
+  professional.delivery = { mode: 'professional', formal: true };
+  professional.designCore = {
+    profile: 'mobile-ecommerce-native',
+    components: ['top-bar', 'search-bar', 'filter-bar', 'product-card', 'bottom-tabbar'],
+    tokens: { colorValues: { 'text-primary': '#161823', 'surface-primary': '#FFFFFF', 'surface-secondary': '#F5F6F9', 'commerce-red': '#FF003C' } }
+  };
+  professional.requirements.businessObjects = ['连衣裙', '商品'];
+  const html = renderDemo(professional);
+  for (const component of professional.designCore.components) assert.match(html, new RegExp(`data-component="${component}"`));
+  assert.match(html, /#FF003C/i);
+  assert.doesNotMatch(html, /class="device"|phone-header|#4f46e5/i);
+  assert.doesNotMatch(html, /😀|🎉|📦|🔍/u);
+  assert.doesNotMatch(html, /自营|¥199|品质保障/);
+});

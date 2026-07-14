@@ -34,13 +34,13 @@ else if (args[0] === 'generate') {
 `);
   chmodSync(fakeInspire, 0o755);
   const definitions = [
-    { name: 'simple', fixture: 'simple-prd.md', route: 'local', intent: '快速评审初版，优先速度' },
-    { name: 'incomplete', fixture: 'incomplete-prd.md', route: 'local', intent: '快速评审初版，优先速度' },
-    { name: 'scheduling', fixture: 'scheduling-prd.md', route: 'local', intent: '快速评审初版，优先速度', expectedStates: ['error'] },
-    { name: 'strategy', fixture: 'strategy-prd.md', route: 'inspire', expectedStages: ['inspire'] },
-    { name: 'commerce-discovery', fixture: 'commerce-discovery-prd.md', requirements: 'commerce-discovery-requirements.json', route: 'inspire', expectedScreens: ['商城推荐', '商品搜索', '商品详情'] },
-    { name: 'commerce-checkout', fixture: 'commerce-checkout-prd.md', requirements: 'commerce-checkout-requirements.json', route: 'inspire', expectedScreens: ['规格选择', '确认订单', '支付结果'] },
-    { name: 'commerce-after-sales', fixture: 'commerce-after-sales-prd.md', requirements: 'commerce-after-sales-requirements.json', route: 'inspire', expectedScreens: ['订单详情', '售后申请', '售后进度'] }
+    { name: 'simple', fixture: 'simple-prd.md', route: 'direct', intent: '快速评审初版，优先速度' },
+    { name: 'incomplete', fixture: 'incomplete-prd.md', route: 'direct', intent: '快速评审初版，优先速度' },
+    { name: 'scheduling', fixture: 'scheduling-prd.md', route: 'direct', intent: '快速评审初版，优先速度', expectedStates: ['error'] },
+    { name: 'strategy', fixture: 'strategy-prd.md', route: 'direct' },
+    { name: 'commerce-discovery', fixture: 'commerce-discovery-prd.md', requirements: 'commerce-discovery-requirements.json', route: 'direct', expectedScreens: ['商城推荐', '商品搜索', '商品详情'] },
+    { name: 'commerce-checkout', fixture: 'commerce-checkout-prd.md', requirements: 'commerce-checkout-requirements.json', route: 'direct', expectedScreens: ['规格选择', '确认订单', '支付结果'] },
+    { name: 'commerce-after-sales', fixture: 'commerce-after-sales-prd.md', requirements: 'commerce-after-sales-requirements.json', route: 'direct', expectedScreens: ['订单详情', '售后申请', '售后进度'] }
   ];
   try {
     const cases = definitions.map(definition => {
@@ -54,14 +54,12 @@ else if (args[0] === 'generate') {
         encoding: 'utf8',
         env: { ...process.env, INSPIRE_PROTOTYPE_BIN: fakeInspire, BENCHMARK_FAKE_STATE: fakeState }
       });
-      const local = definition.route === 'local';
-      const handoffPath = join(output, 'specialist-handoff.json');
-      const comparisonPath = join(output, 'candidate-comparison.json');
-      const artifact = local ? join(output, 'prototype.manifest.json') : handoffPath;
+      const direct = definition.route === 'direct';
+      const artifact = join(output, 'prototype.manifest.json');
       const data = existsSync(artifact) ? JSON.parse(readFileSync(artifact, 'utf8')) : {};
-      const comparison = !local && existsSync(comparisonPath) ? JSON.parse(readFileSync(comparisonPath, 'utf8')) : {};
-      const html = local && existsSync(join(output, 'index.html')) ? readFileSync(join(output, 'index.html'), 'utf8') : '';
-      const route = data.routing?.selected ?? (local ? 'local' : undefined);
+      const comparison = {};
+      const html = existsSync(join(output, 'index.html')) ? readFileSync(join(output, 'index.html'), 'utf8') : '';
+      const route = data.routing?.selected;
       const businessObjects = data.requirements?.businessObjects ?? [];
       const screens = data.requirements?.screens ?? (data.pages ?? []).map(page => page.title);
       const states = [...new Set((data.pages ?? []).map(page => page.state))];
@@ -85,21 +83,15 @@ else if (args[0] === 'generate') {
         && (definition.expectedScreens ?? []).every((screen, index) => screens[index] === screen)
         && !screens.some(screen => /^(?:市场调研|竞品分析|方向判断|产品方案|功能首页|操作结果)$/u.test(screen))
         && (definition.expectedStates ?? []).every(state => states.includes(state))
-        && (local
-          ? /id="editor-panel"/.test(html)
-          : outcome.comparisonReady
-            && outcome.candidateCount === 3
-            && outcome.validCandidateCount === 3
-            && outcome.sameRequirementsHash
-            && outcome.sameDesignSkillPackage
-            && outcome.previewUrlsPresent
-            && outcome.auditPassed
-            && !existsSync(join(output, 'index.html')));
+        && direct
+        && /id="editor-panel"/.test(html)
+        && existsSync(join(output, 'demo-context.json'))
+        && existsSync(join(output, 'design-profile.json'));
       return {
         name: definition.name, route, passed,
-        editable: local && /id="editor-panel"/.test(html),
+        editable: direct && /id="editor-panel"/.test(html),
         businessObjects, screens, states, exitCode: result.status,
-        evidenceClass: local ? 'deterministic-local' : 'simulated-inspire',
+        evidenceClass: 'deterministic-direct',
         ...outcome
       };
     });
