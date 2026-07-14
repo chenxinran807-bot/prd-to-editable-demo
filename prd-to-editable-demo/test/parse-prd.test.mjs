@@ -74,3 +74,65 @@ AI试穿需要由独立端方案改成传统 tryon 方案，让用户感受到�
   assert.ok(requirements.businessObjects.every(term => !/图片展示|抖音直播|站在户外|该图片/.test(term)));
   assert.ok(requirements.traceability.every(item => !/图片展示|抖音直播|站在户外|该图片/.test(item.evidence)));
 });
+
+test('does not turn research chapters into pages and recovers screens from a complex product flow', () => {
+  const model = parsePrd(`# 穿搭 Tab 迭代
+
+## 市场调研
+用户希望快速理解一套穿搭包含哪些商品。
+
+## 竞品分析
+竞品使用内容流承接搭配发现。
+
+## 方向判断
+采用多 Tab 浏览与详情承接方案。
+
+## 产品方案
+- 页面与流转：穿搭 Tab Feed → 穿搭详情页 → AI 试穿弹窗 → 商品清单；详情页也可以打开 AI 搭配弹窗。
+- 穿搭 Tab 支持推荐、日常切换；卡片支持喜欢和不喜欢反馈。
+`);
+
+  const titles = model.pages.map(page => page.title);
+  assert.ok(titles.includes('穿搭 Tab Feed'));
+  assert.ok(titles.includes('穿搭详情页'));
+  assert.ok(titles.includes('AI 试穿弹窗'));
+  assert.ok(titles.includes('商品清单'));
+  assert.ok(titles.includes('AI 搭配弹窗'));
+  assert.ok(!titles.some(title => ['市场调研', '竞品分析', '方向判断', '产品方案'].includes(title)));
+  assert.ok(model.requirements.userActions.includes('喜欢'));
+  assert.ok(model.requirements.userActions.includes('不喜欢'));
+});
+
+test('recovers a complete linear state machine from an arrow-delimited PRD flow', () => {
+  const model = parsePrd(`# AI 试穿拍照输入
+
+## 需求背景
+用户需要通过拍照创建自己的试穿形象。
+
+## 核心流程
+入口页 → 拍照方式浮层 → 相机拍照页 → 照片预览页 → 审核中 → 创建成功页；审核失败时进入创建失败页，用户可以重试并返回相机拍照页。
+`);
+
+  const titles = model.pages.map(page => page.title);
+  for (const title of ['入口页', '拍照方式浮层', '相机拍照页', '照片预览页', '审核中', '创建成功页', '创建失败页']) {
+    assert.ok(titles.includes(title), `missing ${title}`);
+  }
+  assert.ok(!titles.includes('需求背景'));
+  assert.ok(!titles.includes('核心流程'));
+  assert.equal(model.pages.find(page => page.title === '创建成功页')?.state, 'success');
+  assert.equal(model.pages.find(page => page.title === '创建失败页')?.state, 'error');
+  assert.ok(model.pages.flatMap(page => page.elements).some(element => element.text === '重试'));
+});
+
+test('classifies experience shape and emits screen transitions for specialist handoff', () => {
+  const requirements = analyzeRequirements(`# 内容发现
+
+## 产品方案
+穿搭 Tab Feed → 穿搭详情页 → 商品清单；详情页可以打开 AI 试穿弹窗。
+支持推荐、日常 Tab 切换和卡片喜欢反馈。
+`);
+
+  assert.equal(requirements.experienceType, 'browse');
+  assert.deepEqual(requirements.screens.slice(0, 3), ['穿搭 Tab Feed', '穿搭详情页', '商品清单']);
+  assert.ok(requirements.transitions.some(item => item.from === '穿搭 Tab Feed' && item.to === '穿搭详情页'));
+});

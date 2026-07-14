@@ -48,3 +48,24 @@ test('refuses professional generation without the business design Skill', () => 
     route: { id: 'inspire', stages: ['inspire'] }, requirements: {}, inputs: { assets: [] }
   }), /business design Skill is required/);
 });
+
+test('renders browse-type pages and transitions directly into the Inspire prompt', () => {
+  const plan = buildInspirePlan({
+    route: { id: 'inspire', stages: ['prd-generator', 'inspire'], finalContainer: 'inspire' },
+    requirements: {
+      title: '穿搭 Tab', actor: '商城用户', goal: '发现穿搭并试穿', experienceType: 'browse',
+      businessObjects: ['穿搭', '商品'], userActions: ['喜欢', '试穿'], states: ['加载中', '错误'],
+      screens: ['穿搭 Tab Feed', '穿搭详情页', 'AI 试穿弹窗', '商品清单'],
+      transitions: [
+        { from: '穿搭 Tab Feed', action: '点击卡片', to: '穿搭详情页' },
+        { from: '穿搭详情页', action: '点击试穿', to: 'AI 试穿弹窗' }
+      ]
+    },
+    inputs: { assets: [] }, designSkill: 'private:douyin-skill@6'
+  });
+
+  assert.match(plan.prompt, /PRD 类型：多入口浏览型/);
+  assert.match(plan.prompt, /页面\/浮层：穿搭 Tab Feed、穿搭详情页、AI 试穿弹窗、商品清单/);
+  assert.match(plan.prompt, /穿搭 Tab Feed --点击卡片--> 穿搭详情页/);
+  assert.match(plan.prompt, /优先保证 Tab、卡片反馈、详情和弹层的覆盖广度/);
+});

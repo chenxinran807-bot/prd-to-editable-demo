@@ -52,11 +52,11 @@ function extractActions(body) {
     .map(match => cleanHeading(match[1]));
   if (quoted.length) return [...new Set(quoted)].filter(text => text.length >= 2 && text.length <= 24);
   const verbs = [...body.matchAll(/(?:点击|选择|上传|拍照|提交|确认|删除|取消|返回|查看|编辑|刷新|重试|试穿|加购|标记)([^，。；\n]{0,12})/g)]
-    .map(match => cleanHeading(match[0]));
+    .flatMap(match => cleanHeading(match[0]).split(/并(?=(?:点击|选择|上传|拍照|提交|确认|删除|取消|返回|查看|编辑|刷新|重试|试穿|加购|标记))/g));
   return [...new Set(verbs)].filter(text => text.length >= 2 && text.length <= 24);
 }
 
-const ACTION_VERBS = ['创建', '上传', '拍照', '选择', '查看', '编辑', '提交', '确认', '删除', '取消', '返回', '刷新', '重试', '试穿', '加购', '搜索', '筛选', '分享', '下载', '标记'];
+const ACTION_VERBS = ['创建', '上传', '拍照', '选择', '查看', '编辑', '提交', '确认', '删除', '取消', '返回', '刷新', '重试', '试穿', '加购', '搜索', '筛选', '分享', '下载', '标记', '喜欢', '不喜欢'];
 const STATE_WORDS = ['未开始', '未创建', '处理中', '生成中', '试穿中', '排查中', '已完成', '成功', '失败', '错误', '异常', '为空', '空状态', '已读', '未读', '禁用'];
 const OBJECT_WORDS = ['用户', '商品', '内容', '照片', '图片', '服饰', '订单', '库存', '补货单', '通知', '任务', '审核', '报告', '文件', '页面', '账号', '门店', '方案'];
 
@@ -104,6 +104,7 @@ export function analyzeRequirements(source, { title, actor, goal } = {}) {
   const userActions = matchingTerms(analysisSource, ACTION_VERBS);
   const states = matchingTerms(analysisSource, STATE_WORDS).map(state => state === '为空' || state === '空状态' ? '空' : state);
   const businessObjects = extractBusinessObjects(analysisSource);
+  const experience = extractExperience(analysisSource);
   const traceability = [
     ...businessObjects.map(term => ({ kind: 'business-object', term, evidence: evidenceFor(analysisSource, term) })),
     ...userActions.map(term => ({ kind: 'user-action', term, evidence: evidenceFor(analysisSource, term) })),
@@ -116,6 +117,9 @@ export function analyzeRequirements(source, { title, actor, goal } = {}) {
     businessObjects,
     userActions,
     states: [...new Set(states)],
+    experienceType: experience.experienceType,
+    screens: experience.screens,
+    transitions: experience.transitions,
     traceability
   };
 }
@@ -127,21 +131,92 @@ function findTarget(text, pages, currentIndex) {
   return pages[Math.min(currentIndex + 1, pages.length - 1)].id;
 }
 
+const DOCUMENT_SECTION_PATTERN = /^(?:市场调研|用户调研|竞品分析|方向判断|产品方案|需求背景|项目背景|业务背景|需求目标|核心目标|需求范围|方案说明|功能说明|需求详情|交互说明|核心流程|实验结论|数据分析|风险|附录)$/i;
+const SCREEN_SUFFIX_PATTERN = /(?:页|页面|弹窗|浮层|Feed|列表|清单)$/i;
+
+function normalizeScreenTitle(raw) {
+  let title = cleanHeading(raw)
+    .replace(/^[-*\d.、\s]+/, '')
+    .replace(/^(?:页面与流转|页面流转|核心流程|流程|路径)[：:]\s*/, '')
+    .replace(/^(?:[^，。；]{0,18}?)(?:进入|打开|返回|跳转至|跳转到)\s*/, '')
+    .replace(/[（(][^）)]*[）)]/g, '')
+    .replace(/(?:，|。|；).*$/, '')
+    .trim();
+  if (/^(?:审核中|上传中|生成中|处理中|加载中)$/.test(title)) return title;
+  if (!SCREEN_SUFFIX_PATTERN.test(title)) return '';
+  return title.length >= 2 && title.length <= 28 ? title : '';
+}
+
+function extractFlowScreens(source) {
+  if (!/[→➜➡]|->/.test(source)) return [];
+  const candidates = [];
+  const add = raw => {
+    const title = normalizeScreenTitle(raw);
+    if (title && !DOCUMENT_SECTION_PATTERN.test(title) && !candidates.includes(title)) candidates.push(title);
+  };
+  for (const line of source.split('\n')) {
+    if (!/[→➜➡]|->/.test(line)) continue;
+    for (const clause of line.split(/[；;]/)) {
+      for (const part of clause.split(/\s*(?:→|➜|➡|->)\s*/)) add(part);
+    }
+  }
+  for (const match of source.matchAll(/(?:进入|打开|返回|跳转至|跳转到)\s*([^，。；\n]{1,28}?(?:页|页面|弹窗|浮层|Feed|列表|清单))/gi)) add(match[1]);
+  return candidates;
+}
+
+function extractExperience(source) {
+  const screens = extractFlowScreens(source);
+  const transitions = [];
+  for (const line of source.split('\n')) {
+    if (!/[→➜➡]|->/.test(line)) continue;
+    for (const clause of line.split(/[；;]/)) {
+      const chain = clause.split(/\s*(?:→|➜|➡|->)\s*/).map(normalizeScreenTitle).filter(Boolean);
+      for (let index = 0; index < chain.length - 1; index += 1) {
+        transitions.push({ from: chain[index], action: '继续流程', to: chain[index + 1] });
+      }
+    }
+  }
+  const browseSignals = (source.match(/(?:Tab|tab|Feed|信息流|内容流|瀑布流|筛选|推荐流|列表浏览|卡片反馈)/g) ?? []).length;
+  return {
+    experienceType: browseSignals >= 2 ? 'browse' : transitions.length ? 'linear' : 'unspecified',
+    screens,
+    transitions
+  };
+}
+
+function pageState(title) {
+  if (/失败|错误|异常/.test(title)) return 'error';
+  if (/成功|完成/.test(title)) return 'success';
+  if (/空|暂无/.test(title)) return 'empty';
+  if (/审核中|上传中|生成中|处理中|加载中/.test(title)) return 'loading';
+  return 'default';
+}
+
 export function parsePrd(source) {
   const title = cleanHeading(source.match(/^#\s+(.+)$/m)?.[1] ?? '未命名原型');
   const personaText = source.match(/用户[：:]\s*(.+)/)?.[1]?.trim() ?? '目标用户（根据需求推断）';
   const goal = source.match(/目标[：:]\s*(.+)/)?.[1]?.trim() ?? '完成 PRD 描述的核心任务';
   const sections = [...source.matchAll(/^##\s+(.+)\n([\s\S]*?)(?=^##\s+|(?![\s\S]))/gm)];
-  const inferred = sections.length < 2;
-  const rawPages = inferred
+  const flowScreens = extractFlowScreens(source);
+  const pageSections = sections.filter(match => !DOCUMENT_SECTION_PATTERN.test(cleanHeading(match[1])));
+  const inferred = flowScreens.length < 2 && pageSections.length < 2;
+  const rawPages = flowScreens.length >= 2
+    ? flowScreens.map(screenTitle => ({ title: screenTitle, body: evidenceFor(source, screenTitle) }))
+    : inferred
     ? [{ title: '功能首页', body: source }, { title: '操作结果', body: '展示操作完成结果。' }]
-    : sections.map(match => ({ title: cleanHeading(match[1]), body: match[2].trim() }));
-  const pages = rawPages.map((page, index) => ({
-    id: slugify(page.title, `page-${index + 1}`),
-    title: page.title,
-    state: /成功|完成/.test(page.title) ? 'success' : 'default',
-    elements: []
-  }));
+    : pageSections.map(match => ({ title: cleanHeading(match[1]), body: match[2].trim() }));
+  const pageIds = new Map();
+  const pages = rawPages.map((page, index) => {
+    const baseId = slugify(page.title, `page-${index + 1}`);
+    const occurrence = (pageIds.get(baseId) ?? 0) + 1;
+    pageIds.set(baseId, occurrence);
+    return {
+      id: occurrence === 1 ? baseId : `${baseId}-${occurrence}`,
+      title: page.title,
+      state: pageState(page.title),
+      elements: []
+    };
+  });
 
   rawPages.forEach((rawPage, pageIndex) => {
     const page = pages[pageIndex];
