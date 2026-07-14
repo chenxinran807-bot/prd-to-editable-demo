@@ -19,7 +19,7 @@ test('prints usage when required arguments are missing', () => {
 test('generates the complete editable demo deliverable', () => {
   const out = join(mkdtempSync(join(tmpdir(), 'editable-demo-')), 'output');
   const result = spawnSync(process.execPath, [
-    'bin/prd-to-editable-demo.mjs', '--prd', 'fixtures/simple-prd.md', '--out', out
+    'bin/prd-to-editable-demo.mjs', '--prd', 'fixtures/simple-prd.md', '--intent', '快速评审初版，优先速度', '--out', out
   ], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
 
   assert.equal(result.status, 0, result.stderr);
@@ -41,7 +41,6 @@ test('stops at a specialist handoff instead of generating a misleading local dem
   ], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
 
   assert.equal(result.status, 3, result.stderr);
-  assert.match(result.stderr, /prd-generator/);
   assert.match(result.stderr, /inspire/);
   assert.throws(() => readFileSync(join(out, 'index.html'), 'utf8'));
   const handoff = JSON.parse(readFileSync(join(out, 'specialist-handoff.json'), 'utf8'));
@@ -51,8 +50,8 @@ test('stops at a specialist handoff instead of generating a misleading local dem
   assert.ok(handoff.requirements.userActions.includes('上传'));
   assert.ok(handoff.specialistBaseline.mustPreserve.length >= 3);
   assert.ok(handoff.specialistBaseline.mustPreserve.every(item => handoff.acceptance.includes(item)));
-  assert.deepEqual(handoff.routing.stages, ['prd-generator', 'inspire']);
-  assert.deepEqual(handoff.specialistPlan.map(item => item.id), ['prd-generator', 'inspire']);
+  assert.deepEqual(handoff.routing.stages, ['inspire']);
+  assert.deepEqual(handoff.specialistPlan.map(item => item.id), ['inspire']);
   assert.ok(handoff.specialistPlan.flatMap(item => item.baseline.mustPreserve).every(criterion => handoff.acceptance.includes(criterion)));
   assert.deepEqual(evidenceTemplate.specialistEvidence.map(item => item.criterion), [...new Set(handoff.specialistPlan.flatMap(item => item.baseline.mustPreserve))]);
   assert.ok(evidenceTemplate.specialistEvidence.every(item => item.evidence === ''));
@@ -73,7 +72,7 @@ test('resolves repeated specialist asset paths without passing mapper metadata t
   const handoff = JSON.parse(readFileSync(join(out, 'specialist-handoff.json'), 'utf8'));
   assert.deepEqual(handoff.inputs.assets, [asset]);
   assert.equal(handoff.routing.selected, 'inspire');
-  assert.deepEqual(handoff.routing.stages, ['pm-kakaxi-skills', 'inspire']);
+  assert.deepEqual(handoff.routing.stages, ['inspire']);
 });
 
 test('uses agent-produced semantic IR instead of heuristic dictionaries for specialist handoff', () => {
@@ -130,7 +129,7 @@ test('uses semantic screens and transitions on the local editable path', () => {
     ], assumptions: [], gaps: []
   }));
   const result = spawnSync(process.execPath, [
-    'bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements', requirements, '--out', out
+    'bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements', requirements, '--intent', '快速评审初版，优先速度', '--out', out
   ], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
 
   assert.equal(result.status, 0, result.stderr);
@@ -154,4 +153,26 @@ test('finalizes a specialist bundle through the public CLI', () => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(readFileSync(join(out, 'index.html'), 'utf8'), /编辑原型/);
   assert.match(result.stdout, /index\.html/);
+});
+
+test('professional handoff forbids silent downgrade and fast review is marked non-formal', () => {
+  const professionalRoot = mkdtempSync(join(tmpdir(), 'professional-mode-'));
+  writeFileSync(join(professionalRoot, 'prd.md'), '# 专业原型\n用户提交申请并查看结果。');
+  const professional = spawnSync(process.execPath, [
+    'bin/prd-to-editable-demo.mjs', '--prd', join(professionalRoot, 'prd.md'), '--intent', '原生高保真', '--out', join(professionalRoot, 'out')
+  ], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+  assert.equal(professional.status, 3, professional.stderr);
+  const handoff = JSON.parse(readFileSync(join(professionalRoot, 'out', 'specialist-handoff.json'), 'utf8'));
+  assert.deepEqual(handoff.qualityAssurance, {
+    mode: 'professional', finalContainer: 'inspire', silentDowngradeAllowed: false, readiness: 'preflight-required'
+  });
+
+  const fastRoot = mkdtempSync(join(tmpdir(), 'fast-mode-'));
+  writeFileSync(join(fastRoot, 'prd.md'), '# 快速评审\n用户提交申请并查看结果。');
+  const fast = spawnSync(process.execPath, [
+    'bin/prd-to-editable-demo.mjs', '--prd', join(fastRoot, 'prd.md'), '--intent', '快速评审初版，优先速度', '--out', join(fastRoot, 'out')
+  ], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+  assert.equal(fast.status, 0, fast.stderr);
+  const manifest = JSON.parse(readFileSync(join(fastRoot, 'out', 'prototype.manifest.json'), 'utf8'));
+  assert.deepEqual(manifest.delivery, { mode: 'fast-review', formal: false });
 });

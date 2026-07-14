@@ -48,6 +48,7 @@ export async function main(argv = process.argv.slice(2)) {
       routing: { selected: route.id, stages, reason: route.reason, handoff: stages.map(id => `use-${id}-skill`).join('-then-'), status: 'required' },
       requirements,
       inputs: { prd: resolve(options.prd), semanticRequirements: requirementsPath, assets: options.assets.map(asset => resolve(asset)), referenceUrl: options.url ?? null },
+      qualityAssurance: { mode: route.deliveryMode, finalContainer: 'inspire', silentDowngradeAllowed: false, readiness: 'preflight-required' },
       specialistPlan,
       specialistBaseline,
       acceptance: [
@@ -69,6 +70,7 @@ export async function main(argv = process.argv.slice(2)) {
     return 3;
   }
   const manifest = requirementsPath ? semanticRequirementsToModel(requirements) : parsePrd(source);
+  manifest.delivery = { mode: route.deliveryMode, formal: false };
   manifest.routing = { selected: route.id, reason: route.reason, handoff: route.id === 'local' ? 'local-fast-path' : `use-${route.id}-skill` };
   if (route.id !== 'local') manifest.assumptions.push({ id: 'route-fallback', statement: `专业路径 ${route.id} 尚未接入，使用本地生成`, source: 'router' });
   const html = renderDemo(manifest);
