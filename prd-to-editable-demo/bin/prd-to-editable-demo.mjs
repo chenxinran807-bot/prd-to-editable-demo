@@ -39,9 +39,9 @@ export async function main(argv = process.argv.slice(2)) {
   if (route.id !== 'local') {
     const output = resolve(options.out);
     const parity = JSON.parse(await readFile(new URL('../references/capability-parity.json', import.meta.url), 'utf8'));
-    const specialistBaseline = parity.specialists[route.id];
+    const specialistBaseline = parity.capabilities.inspire;
     const stages = route.stages ?? [route.id];
-    const specialistPlan = stages.map(id => ({ id, baseline: parity.specialists[id] }));
+    const specialistPlan = Object.entries(parity.capabilities).map(([id, baseline]) => ({ id, baseline }));
     const stageCriteria = [...new Set(specialistPlan.flatMap(stage => stage.baseline?.mustPreserve ?? []))];
     const handoff = {
       schemaVersion: 1,
