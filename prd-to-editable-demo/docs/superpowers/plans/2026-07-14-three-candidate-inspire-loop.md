@@ -4,6 +4,8 @@
 
 **Goal:** Turn the professional PRD entry point into an end-to-end Inspire workflow that automatically selects one eligible business design Skill, generates three comparable candidates, validates each against the real PRD contract, and records the user's selected asset as the only iteration parent.
 
+**Quality Target:** Raise the isolated cross-input effect score from 70.5 to at least 90 and rank first in the same evaluation cohort. If the leading competitor exceeds 90, the release target becomes strictly greater than that score. No hard-coded case vocabulary or selectors may contribute to the result.
+
 **Architecture:** Keep semantic requirements as the source of truth. Add three isolated units: an acceptance-contract compiler, a deterministic visible-Skill matcher, and a candidate workflow service. The CLI will compose these units through dependency injection so unit tests can use a controlled Inspire client while live evidence tests continue to call the official CLI.
 
 **Tech Stack:** Node.js ESM, built-in `node:test`, official `inspire-prototype` CLI, JSON workflow artifacts, zero runtime dependencies.
@@ -20,6 +22,7 @@
 - Create `src/asset-staging.mjs`: classify solution versus reference assets and create bounded parent/child stages.
 - Create `src/frozen-task-contract.mjs`: derive auditable task chains and observable success conditions from semantic requirements.
 - Create `src/browser-qa-contract.mjs`: validate task results, images, network, controls, overflow, and console evidence.
+- Create `scripts/check-evaluation-leakage.mjs`: reject experiment-specific vocabulary in production code.
 - Create `bin/select-candidate.mjs`: public fallback CLI for A/B/C text selection.
 - Modify `bin/prd-to-editable-demo.mjs`: run the professional workflow instead of ending at handoff.
 - Modify `bin/run-inspire-pipeline.mjs`: reuse the shared single-candidate workflow path and real acceptance contract.
@@ -95,6 +98,17 @@ export function compileAcceptanceContract(requirements = {}) {
 ```
 
 `compileFrozenTasks` must derive task entry, UI-only action sequence, and observable outcome from transitions and states. It must reject success rules that only assert route existence or URL change.
+
+The compiler must use interaction classes rather than case words:
+
+- navigation: destination content becomes visible and the prior action remains explainable;
+- selection/switch: selected state and dependent content change;
+- input/consent: control has an accessible state and submission eligibility changes;
+- device/control action: a documented observable property changes;
+- submit/async: loading transitions to success or recoverable failure;
+- retry/undo: the previous recoverable state is restored.
+
+No production branch may match literal evaluation labels such as specific experiment button names.
 
 - [ ] **Step 4: Add a failing CLI assertion**
 
@@ -432,6 +446,8 @@ git commit -m "feat: select one Inspire candidate for iteration"
 - Create: `fixtures/commerce-*/expected-professional.json`
 - Create: `src/browser-qa-contract.mjs`
 - Create: `test/browser-qa-contract.test.mjs`
+- Create: `scripts/check-evaluation-leakage.mjs`
+- Create: `test/evaluation-leakage.test.mjs`
 
 - [ ] **Step 1: Write a failing benchmark assertion**
 
@@ -464,11 +480,15 @@ Expected: FAIL because the current benchmark treats handoff as success.
 
 Use controlled official-CLI-compatible fixtures for repeatable CI. Mark reports as `simulated` and ensure they cannot be cited as live visual evidence. Add raw browser-QA contract validation for task pass counts, direct-navigation prohibition, observable content/state changes, image dimensions, network failures, console errors, overflow and overlap concerns.
 
+Split evaluation cases into a visible development set and an isolated holdout set. Add paraphrased labels and unseen ecommerce flows to prove the rules operate on semantic contracts rather than literal copy. The leakage checker must scan `src/`, `bin/`, `SKILL.md`, and production references for case-specific names and selectors sourced from the experiment report; fixtures and evaluation reports are excluded.
+
 - [ ] **Step 4: Run benchmark test and verify GREEN**
 
-Run: `node --test test/benchmark.test.mjs test/browser-qa-contract.test.mjs && npm run benchmark`
+Run: `node --test test/benchmark.test.mjs test/browser-qa-contract.test.mjs test/evaluation-leakage.test.mjs && npm run benchmark`
 
 Expected: tests pass and all benchmark cases report their evidence class.
+
+The benchmark is release-ready only when the holdout aggregate effect score is at least 90, every critical frozen task passes, and the result ranks first against the same competitor cohort. Do not tune production rules after inspecting holdout failures; move failed holdout cases into the next development cycle and create a fresh holdout set.
 
 - [ ] **Step 5: Commit**
 
