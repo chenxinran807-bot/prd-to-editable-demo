@@ -87,8 +87,22 @@ test('generation uses structured argv and parses the final done event', async ()
     'generate', 'prototype', '--prompt', '生成商城页面', '--name', '商城原型',
     '--ref', 'asset-parent', '--skill', 'workspace:douyin-mall-native-design@1',
     '--file', '/tmp/screen one.png', '--file', '/tmp/icon.svg', '--type', 'html',
-    '--wait', '--report', 'both', '--fail-on-generation-error', '--json'
+    '--wait', '--report', 'json', '--fail-on-generation-error', '--json'
   ]);
+});
+
+test('generation adapter preserves JSON events while tolerating an appended human report', async () => {
+  const fake = scriptedRunner([{ stdout: [
+    JSON.stringify({ type: 'started', assetId: 'asset-current' }),
+    JSON.stringify({ type: 'done', result: { status: 'success', assetId: 'asset-current', previewUrl: 'https://preview/current' } }),
+    '# Inspire Prototype E2E Report',
+    '- Preview: https://preview/current'
+  ].join('\n') }]);
+  const client = createInspireClient({ run: fake.run });
+  const result = await client.generate({ prompt: '生成原型', designSkill: 'public:mobile@1' });
+  assert.equal(result.assetId, 'asset-current');
+  assert.equal(result.events.length, 2);
+  assert.deepEqual(result.ignoredOutput, ['# Inspire Prototype E2E Report', '- Preview: https://preview/current']);
 });
 
 test('generation fails closed when the exact business Skill was not opened', async () => {

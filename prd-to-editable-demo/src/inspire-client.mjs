@@ -30,9 +30,13 @@ function parseJson(source, label) {
 function parseNdjson(source) {
   const lines = source.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   if (!lines.length) throw new InspireClientError('malformed_output', 'generation returned empty NDJSON');
-  try { return lines.map(line => JSON.parse(line)); } catch {
-    throw new InspireClientError('malformed_output', 'generation returned malformed NDJSON');
+  const events = [];
+  const ignoredOutput = [];
+  for (const line of lines) {
+    try { events.push(JSON.parse(line)); } catch { ignoredOutput.push(line); }
   }
+  if (!events.length) throw new InspireClientError('malformed_output', 'generation returned malformed NDJSON');
+  return { events, ignoredOutput };
 }
 
 function parseSkillRef(reference) {
@@ -123,15 +127,15 @@ export function createInspireClient({ run = defaultRun, command = 'inspire-proto
       if (plan.parentAssetId) args.push('--ref', plan.parentAssetId);
       args.push('--skill', plan.designSkill);
       for (const file of plan.files ?? []) args.push('--file', file);
-      args.push('--type', plan.outputType ?? 'html', '--wait', '--report', 'both', '--fail-on-generation-error', '--json');
-      const events = parseNdjson(await execute(args));
+      args.push('--type', plan.outputType ?? 'html', '--wait', '--report', 'json', '--fail-on-generation-error', '--json');
+      const { events, ignoredOutput } = parseNdjson(await execute(args));
       const rawDone = [...events].reverse().find(event => event.type === 'done');
       const done = rawDone?.result ?? rawDone;
       if (!done) throw new InspireClientError('malformed_output', 'generation NDJSON is missing a done event');
       if (done.status !== 'success') throw new InspireClientError('generation_failed', 'Inspire prototype generation did not succeed', { status: done.status, assetId: done.assetId });
       if (!done.assetId) throw new InspireClientError('malformed_output', 'successful generation is missing assetId');
       assertExactSkillOpened(done, plan.expectedDesignSkill);
-      return { ...done, events };
+      return { ...done, events, ignoredOutput };
     },
     async asset(assetId) {
       if (!assetId) throw new InspireClientError('invalid_asset', 'assetId is required');

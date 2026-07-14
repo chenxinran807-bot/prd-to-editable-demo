@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { parseArgs } from '../bin/prd-to-editable-demo.mjs';
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -16,6 +17,11 @@ else process.exit(4);
   chmodSync(executable, 0o755);
   return executable;
 }
+
+test('accepts an explicit previously-approved Inspire business design Skill', () => {
+  const options = parseArgs(['--prd', 'prd.md', '--out', 'out', '--design-skill', 'private:consumer-mobile@5']);
+  assert.equal(options.designSkill, 'private:consumer-mobile@5');
+});
 
 test('prints usage when required arguments are missing', () => {
   const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs'], {

@@ -23,6 +23,7 @@ export function parseArgs(argv) {
     else if (token === '--intent') options.intent = argv[++index];
     else if (token === '--url') options.url = argv[++index];
     else if (token === '--requirements') options.requirements = argv[++index];
+    else if (token === '--design-skill') options.designSkill = argv[++index];
   }
   return options;
 }
@@ -30,7 +31,7 @@ export function parseArgs(argv) {
 export async function main(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
   if (!options.prd || !options.out) {
-    process.stderr.write('Usage: prd-to-editable-demo --prd <path> --out <directory> [--requirements <semantic-ir.json>] [--asset <path>] [--intent <text>] [--url <url>]\n');
+    process.stderr.write('Usage: prd-to-editable-demo --prd <path> --out <directory> [--requirements <semantic-ir.json>] [--asset <path>] [--intent <text>] [--url <url>] [--design-skill <source:key@version>]\n');
     return 2;
   }
   const source = await readFile(resolve(options.prd), 'utf8');
@@ -103,6 +104,7 @@ export async function main(argv = process.argv.slice(2)) {
         prdSource: source
       },
       visibleSkills,
+      selectedDesignSkill: options.designSkill ?? null,
       registry,
       privateAllowlist,
       client,
