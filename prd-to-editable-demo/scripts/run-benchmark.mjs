@@ -65,6 +65,19 @@ else if (args[0] === 'generate') {
       const businessObjects = data.requirements?.businessObjects ?? [];
       const screens = data.requirements?.screens ?? (data.pages ?? []).map(page => page.title);
       const states = [...new Set((data.pages ?? []).map(page => page.state))];
+      const candidates = comparison.candidates ?? [];
+      const validCandidates = candidates.filter(candidate => candidate.audit?.status === 'passed');
+      const requirementHashes = new Set(candidates.map(candidate => candidate.candidateBrief?.requirementsHash).filter(Boolean));
+      const designSkills = new Set(candidates.map(candidate => candidate.designSkill).filter(Boolean));
+      const outcome = {
+        candidateCount: candidates.length,
+        validCandidateCount: validCandidates.length,
+        comparisonReady: comparison.status === 'comparison-ready',
+        sameRequirementsHash: candidates.length > 0 && requirementHashes.size === 1,
+        sameDesignSkillPackage: candidates.length > 0 && designSkills.size === 1,
+        previewUrlsPresent: candidates.length > 0 && candidates.every(candidate => Boolean(candidate.previewUrl)),
+        auditPassed: candidates.length > 0 && candidates.every(candidate => candidate.audit?.status === 'passed')
+      };
       const passed = result.status === 0
         && route === definition.route
         && (definition.expectedStages ?? []).every((stage, index) => data.routing?.stages?.[index] === stage)
@@ -74,17 +87,20 @@ else if (args[0] === 'generate') {
         && (definition.expectedStates ?? []).every(state => states.includes(state))
         && (local
           ? /id="editor-panel"/.test(html)
-          : comparison.status === 'comparison-ready'
-            && comparison.candidates?.length === 3
-            && comparison.candidates.every(candidate => candidate.previewUrl && candidate.audit?.status === 'passed')
+          : outcome.comparisonReady
+            && outcome.candidateCount === 3
+            && outcome.validCandidateCount === 3
+            && outcome.sameRequirementsHash
+            && outcome.sameDesignSkillPackage
+            && outcome.previewUrlsPresent
+            && outcome.auditPassed
             && !existsSync(join(output, 'index.html')));
       return {
         name: definition.name, route, passed,
         editable: local && /id="editor-panel"/.test(html),
         businessObjects, screens, states, exitCode: result.status,
         evidenceClass: local ? 'deterministic-local' : 'simulated-inspire',
-        candidateCount: comparison.candidates?.length ?? 0,
-        comparisonReady: comparison.status === 'comparison-ready'
+        ...outcome
       };
     });
     return { generatedAt: new Date().toISOString(), passed: cases.every(item => item.passed), cases };

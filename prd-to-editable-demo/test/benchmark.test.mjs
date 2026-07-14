@@ -16,7 +16,12 @@ test('benchmark covers ecommerce discovery, checkout, and after-sales flows', ()
     assert.equal(item?.route, 'inspire');
     assert.ok(item?.businessObjects.length > 0);
     assert.equal(item?.candidateCount, 3);
+    assert.equal(item?.validCandidateCount, 3);
     assert.equal(item?.comparisonReady, true);
+    assert.equal(item?.sameRequirementsHash, true);
+    assert.equal(item?.sameDesignSkillPackage, true);
+    assert.equal(item?.previewUrlsPresent, true);
+    assert.equal(item?.auditPassed, true);
     assert.equal(item?.evidenceClass, 'simulated-inspire');
   }
   assert.ok(report.cases.flatMap(item => item.businessObjects).every(term => !/(点击|运营人员|失败|发起)/.test(term)));
