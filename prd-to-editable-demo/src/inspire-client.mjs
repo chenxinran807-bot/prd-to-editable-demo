@@ -41,6 +41,48 @@ function parseSkillRef(reference) {
   return { source: match[1], skillKey: match[2], version: match[3] ? Number(match[3]) : null };
 }
 
+function isHostOrchestrationSkill(skill) {
+  return skill.skillKey === 'prd-to-editable-demo';
+}
+
+function normalizedSkillIdentity(value) {
+  if (typeof value === 'string') {
+    try { return parseSkillRef(value); } catch { return null; }
+  }
+  if (!value || typeof value !== 'object') return null;
+  return {
+    source: value.source,
+    skillKey: value.skillKey ?? value.key ?? value.ref ?? value.name,
+    version: value.version == null ? null : Number(value.version),
+    packageHash: value.packageHash ?? value.package_hash ?? null
+  };
+}
+
+function sameSkillPackage(actual, expected) {
+  const candidate = normalizedSkillIdentity(actual);
+  const wanted = normalizedSkillIdentity(expected);
+  if (!candidate || !wanted) return false;
+  if (candidate.source !== wanted.source || candidate.skillKey !== wanted.skillKey) return false;
+  if (wanted.version !== null && candidate.version !== wanted.version) return false;
+  if (wanted.packageHash && candidate.packageHash !== wanted.packageHash) return false;
+  return true;
+}
+
+function assertExactSkillOpened(done, expectedDesignSkill) {
+  if (!expectedDesignSkill) return;
+  const trace = done.skillTrace ?? done.skill_trace ?? {};
+  const opened = trace.openedSkills ?? trace.opened_skills ?? [];
+  const activated = trace.activatedSkills ?? trace.activated_skills ?? [];
+  if (!opened.some(item => sameSkillPackage(item, expectedDesignSkill))
+      || !activated.some(item => sameSkillPackage(item, expectedDesignSkill))) {
+    throw new InspireClientError(
+      'design_skill_not_opened',
+      'Inspire generated an asset without activating and opening the pinned business design Skill',
+      { assetId: done.assetId, expectedDesignSkill, skillTrace: trace }
+    );
+  }
+}
+
 function safeCliError(result) {
   throw new InspireClientError('cli_failed', `Inspire CLI exited with code ${result.code}`, { exitCode: result.code });
 }
@@ -61,9 +103,15 @@ export function createInspireClient({ run = defaultRun, command = 'inspire-proto
       return value.list;
     },
     async preflight(designSkillRef) {
+      const wanted = parseSkillRef(designSkillRef);
+      if (isHostOrchestrationSkill(wanted)) {
+        throw new InspireClientError(
+          'orchestration_skill_misrouted',
+          'prd-to-editable-demo is the host Agent orchestration Skill and cannot be passed to Inspire Builder as --skill'
+        );
+      }
       const identity = await client.whoami();
       const visible = await client.visibleSkills();
-      const wanted = parseSkillRef(designSkillRef);
       const designSkill = visible.find(item => {
         const key = item.skillKey ?? item.key;
         return item.source === wanted.source && key === wanted.skillKey
@@ -86,6 +134,7 @@ export function createInspireClient({ run = defaultRun, command = 'inspire-proto
       if (!done) throw new InspireClientError('malformed_output', 'generation NDJSON is missing a done event');
       if (done.status !== 'success') throw new InspireClientError('generation_failed', 'Inspire prototype generation did not succeed', { status: done.status, assetId: done.assetId });
       if (!done.assetId) throw new InspireClientError('malformed_output', 'successful generation is missing assetId');
+      assertExactSkillOpened(done, plan.expectedDesignSkill);
       return { ...done, events };
     },
     async asset(assetId) {

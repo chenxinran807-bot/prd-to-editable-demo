@@ -84,7 +84,11 @@ try {
     designSkill,
     parentAssetId: args.ref ?? null
   });
-  const generation = await client.generate({ ...plan, name: handoff.requirements?.title });
+  const generation = await client.generate({
+    ...plan,
+    name: handoff.requirements?.title,
+    expectedDesignSkill: preflight.designSkill
+  });
   const asset = await client.asset(generation.assetId);
   const auditableSource = extractAuditableSource(asset);
   const references = JSON.parse(await readFile(new URL('../inspire-business-skill/references.json', import.meta.url), 'utf8'));

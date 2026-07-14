@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -16,7 +16,7 @@ if (args[0] === 'whoami') console.log(JSON.stringify({ userId: 'tester' }));
 else if (args[0] === 'skills') console.log(JSON.stringify({ list: [{ source: 'workspace', skillKey: 'douyin-native', version: 1 }] }));
 else if (args[0] === 'generate') {
   console.log(JSON.stringify({ type: 'started', assetId: 'asset-123' }));
-  console.log(JSON.stringify({ type: 'done', status: 'success', assetId: 'asset-123', previewUrl: 'https://inspire.test/preview/asset-123', inboxDeepLink: 'inspire://inbox/asset-123' }));
+  console.log(JSON.stringify({ type: 'done', status: 'success', assetId: 'asset-123', previewUrl: 'https://inspire.test/preview/asset-123', inboxDeepLink: 'inspire://inbox/asset-123', skillTrace: { activatedSkills: [{ source: 'workspace', skillKey: 'douyin-native', version: 1 }], openedSkills: [{ source: 'workspace', skillKey: 'douyin-native', version: 1 }] } }));
 } else if (args[0] === 'asset') console.log(JSON.stringify({
   assetId: args[1],
   markup: '<header data-component="top-bar">商品详情</header><button data-action="add-to-cart"><img src="icons/cart.svg" alt="加入购物车">加入购物车</button><section data-state="success"><img src="icons/check.svg" alt="成功">已加入购物车</section>'
@@ -56,7 +56,7 @@ test('iterate mode keeps the accepted parent when deterministic audit fails', ()
 const args = process.argv.slice(2);
 if (args[0] === 'whoami') console.log(JSON.stringify({ userId: 'tester' }));
 else if (args[0] === 'skills') console.log(JSON.stringify({ list: [{ source: 'workspace', skillKey: 'douyin-native', version: 1 }] }));
-else if (args[0] === 'generate') console.log(JSON.stringify({ type: 'done', status: 'success', assetId: 'asset-bad', previewUrl: 'https://inspire.test/bad', inboxDeepLink: 'inspire://inbox/bad' }));
+else if (args[0] === 'generate') console.log(JSON.stringify({ type: 'done', status: 'success', assetId: 'asset-bad', previewUrl: 'https://inspire.test/bad', inboxDeepLink: 'inspire://inbox/bad', skillTrace: { activatedSkills: [{ source: 'workspace', skillKey: 'douyin-native', version: 1 }], openedSkills: [{ source: 'workspace', skillKey: 'douyin-native', version: 1 }] } }));
 else if (args[0] === 'asset') console.log(JSON.stringify({ assetId: args[1], markup: '<button>🛒 加购</button>' }));
 `);
   chmodSync(fake, 0o755);
@@ -72,4 +72,39 @@ else if (args[0] === 'asset') console.log(JSON.stringify({ assetId: args[1], mar
   assert.equal(delivery.currentAssetId, 'asset-good');
   assert.equal(delivery.versions[0].acceptanceStatus, 'candidate');
   assert.equal(delivery.versions[0].qualityStatus, 'pending');
+});
+
+test('does not deliver an asset when Inspire silently falls back to a built-in Skill', () => {
+  const root = mkdtempSync(join(tmpdir(), 'inspire-pipeline-fallback-'));
+  const fake = join(root, 'fake-inspire.mjs');
+  const handoffPath = join(root, 'handoff.json');
+  const output = join(root, 'delivery');
+  writeFileSync(fake, `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === 'whoami') console.log(JSON.stringify({ userId: 'tester' }));
+else if (args[0] === 'skills') console.log(JSON.stringify({ list: [{ source: 'private', skillKey: 'douyin-native', version: 3, packageHash: 'hash-3' }] }));
+else if (args[0] === 'generate') console.log(JSON.stringify({
+  type: 'done', status: 'success', assetId: 'asset-fallback',
+  skillTrace: {
+    selectedSkills: [{ source: 'private', skillKey: 'douyin-native', version: 3, packageHash: 'hash-3' }],
+    activatedSkills: [],
+    openedSkills: [{ source: 'built-in', skillKey: 'mobile-shell', version: 1 }]
+  }
+}));
+else if (args[0] === 'asset') process.exit(9);
+`);
+  chmodSync(fake, 0o755);
+  writeFileSync(handoffPath, JSON.stringify({
+    routing: { selected: 'inspire', stages: ['inspire'], finalContainer: 'inspire' },
+    requirements: { title: '购物车' }, auditRequirements: {}, inputs: { assets: [] }
+  }));
+
+  const result = spawnSync(process.execPath, [
+    'bin/run-inspire-pipeline.mjs', '--handoff', handoffPath,
+    '--design-skill', 'private:douyin-native@3', '--out', output
+  ], { cwd: new URL('..', import.meta.url), env: { ...process.env, INSPIRE_PROTOTYPE_BIN: fake }, encoding: 'utf8' });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /without activating and opening/);
+  assert.equal(existsSync(join(output, 'inspire-delivery.json')), false);
 });

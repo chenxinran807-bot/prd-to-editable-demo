@@ -44,6 +44,17 @@ test('preflight rejects an invisible or mismatched pinned Skill', async () => {
   });
 });
 
+test('preflight rejects the host orchestration Skill before calling Inspire', async () => {
+  const fake = scriptedRunner([]);
+  const client = createInspireClient({ run: fake.run });
+  await assert.rejects(() => client.preflight('private:prd-to-editable-demo'), error => {
+    assert.ok(error instanceof InspireClientError);
+    assert.equal(error.kind, 'orchestration_skill_misrouted');
+    return true;
+  });
+  assert.deepEqual(fake.calls, []);
+});
+
 test('generation uses structured argv and parses the final done event', async () => {
   const fake = scriptedRunner([{ stdout: [
     JSON.stringify({ type: 'started', assetId: 'asset-123', inboxDeepLink: 'https://inspire/inbox' }),
@@ -66,6 +77,59 @@ test('generation uses structured argv and parses the final done event', async ()
     '--file', '/tmp/screen one.png', '--file', '/tmp/icon.svg', '--type', 'html',
     '--wait', '--report', 'both', '--fail-on-generation-error', '--json'
   ]);
+});
+
+test('generation fails closed when the exact business Skill was not opened', async () => {
+  const fake = scriptedRunner([{ stdout: JSON.stringify({
+    type: 'done', status: 'success', assetId: 'asset-fallback',
+    skillTrace: {
+      selectedSkills: [{ source: 'private', skillKey: 'douyin-native', version: 3, packageHash: 'hash-3' }],
+      activatedSkills: [],
+      openedSkills: [{ source: 'built-in', skillKey: 'mobile-shell', version: 1 }]
+    }
+  }) }]);
+  const client = createInspireClient({ run: fake.run });
+  await assert.rejects(() => client.generate({
+    prompt: '生成商城页面',
+    designSkill: 'private:douyin-native@3',
+    expectedDesignSkill: { source: 'private', skillKey: 'douyin-native', version: 3, packageHash: 'hash-3' }
+  }), error => {
+    assert.ok(error instanceof InspireClientError);
+    assert.equal(error.kind, 'design_skill_not_opened');
+    assert.equal(error.details.assetId, 'asset-fallback');
+    return true;
+  });
+});
+
+test('generation accepts only the exact opened business Skill package', async () => {
+  const fake = scriptedRunner([{ stdout: JSON.stringify({
+    type: 'done', status: 'success', assetId: 'asset-native',
+    skillTrace: {
+      activatedSkills: [{ source: 'private', skillKey: 'douyin-native', version: 3, packageHash: 'hash-3' }],
+      openedSkills: [{ source: 'private', skillKey: 'douyin-native', version: 3, packageHash: 'hash-3' }]
+    }
+  }) }]);
+  const client = createInspireClient({ run: fake.run });
+  const result = await client.generate({
+    prompt: '生成商城页面',
+    designSkill: 'private:douyin-native@3',
+    expectedDesignSkill: { source: 'private', skillKey: 'douyin-native', version: 3, packageHash: 'hash-3' }
+  });
+  assert.equal(result.assetId, 'asset-native');
+});
+
+test('generation matches the real Inspire trace name/ref fields to the visible skillKey', async () => {
+  const exact = { source: 'private', name: 'douyin-native', ref: 'douyin-native', version: '3', packageHash: 'hash-3' };
+  const fake = scriptedRunner([{ stdout: JSON.stringify({
+    type: 'done', status: 'success', assetId: 'asset-real-trace',
+    skillTrace: { activatedSkills: [exact], openedSkills: [exact] }
+  }) }]);
+  const client = createInspireClient({ run: fake.run });
+  const result = await client.generate({
+    prompt: '生成商城页面', designSkill: 'private:douyin-native@3',
+    expectedDesignSkill: { source: 'private', skillKey: 'douyin-native', version: 3, packageHash: 'hash-3' }
+  });
+  assert.equal(result.assetId, 'asset-real-trace');
 });
 
 test('generation rejects malformed output and non-success terminal states', async () => {

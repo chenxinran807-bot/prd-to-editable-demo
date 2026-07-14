@@ -31,3 +31,14 @@ test('Skill makes Inspire the only professional final container', async () => {
   assert.match(source, /Emoji.*0/);
   assert.match(source, /主观视觉验收/);
 });
+
+test('Skill separates host orchestration identity from Inspire Builder design identity', async () => {
+  const source = await readFile(new URL('../SKILL.md', import.meta.url), 'utf8');
+  assert.match(source, /外部 Agent 编排 Skill/);
+  assert.match(source, /Inspire Builder 业务设计 Skill/);
+  assert.match(source, /不得.*private:prd-to-editable-demo.*--skill/);
+  assert.match(source, /douyin-mall-independent-app-prototype-guidance@3/);
+  assert.match(source, /activatedSkills/);
+  assert.match(source, /openedSkills/);
+  assert.match(source, /未.*激活.*打开.*失败/);
+});

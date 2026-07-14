@@ -25,6 +25,13 @@ node bin/prd-to-editable-demo.mjs --prd <prd-path> --out <output-directory>
 
 ## 专业交付到 Inspire
 
+这里有两个不能混用的 Skill 身份：
+
+- `prd-to-editable-demo` 是安装在 Aime、Codex 等宿主中的**外部 Agent 编排 Skill**，负责理解 PRD、路由和调用命令。
+- `<source:key@version>` 是 Inspire Builder 运行时可见的**Inspire Builder 业务设计 Skill**，负责生成时的业务视觉与交互约束。
+
+不得把 `private:prd-to-editable-demo` 作为 Inspire 的 `--skill` 参数；它不是 Builder 业务设计包。当前 owner 的抖音商城独立端候选应使用 `private:douyin-mall-independent-app-prototype-guidance@3`。其他使用者必须先从 `inspire-prototype skills visible --json` 中选择自己确实可见的业务设计 Skill，并固定来源与版本。
+
 获得交接包后执行：
 
 ```bash
@@ -44,7 +51,7 @@ node bin/run-inspire-pipeline.mjs \
   --out <delivery-directory>
 ```
 
-必须先验证 Inspire 登录状态和指定版本的业务设计 Skill 可见。生成后记录 `assetId`、父版本、预览链接和收纳箱链接；确定性审查失败时不得覆盖上一已接受版本。
+必须先验证 Inspire 登录状态和指定版本的业务设计 Skill 可见。生成完成后，还必须核对返回的 `skillTrace.activatedSkills` 与 `skillTrace.openedSkills` 均包含预检时解析出的同一来源、key、版本和 package hash；未真正激活并打开时视为失败，即使平台返回了 `success` 和 `assetId` 也不得交付。生成后记录 `assetId`、父版本、预览链接和收纳箱链接；确定性审查失败时不得覆盖上一已接受版本。
 
 ## 原生设计底线
 
