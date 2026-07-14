@@ -1,0 +1,93 @@
+{
+  "private:douyin-mall-independent-app-prototype-guidance": {
+    "domains": ["commerce"],
+    "products": ["douyin-mall-independent-app"],
+    "platforms": ["mobile"],
+    "surfaces": ["consumer"],
+    "capabilities": ["browse", "transaction", "after-sales"],
+    "exclusions": ["merchant", "desktop"],
+    "qualityLevel": "brand-native",
+    "privateAutoUse": "owner-approved"
+  },
+  "built-in:tiktok-design-system": {
+    "domains": ["social", "commerce"],
+    "products": ["tiktok"],
+    "platforms": ["mobile"],
+    "surfaces": ["consumer", "creator"],
+    "capabilities": ["browse", "transaction"],
+    "exclusions": ["desktop"],
+    "qualityLevel": "native"
+  },
+  "public:aurora-design-system": {
+    "domains": ["commerce"],
+    "products": ["douyin-shop", "chengjiao"],
+    "platforms": ["desktop"],
+    "surfaces": ["merchant"],
+    "capabilities": ["transaction", "analytics"],
+    "exclusions": ["consumer", "mobile"],
+    "qualityLevel": "brand-native"
+  },
+  "public:feige-prototype": {
+    "domains": ["commerce"],
+    "products": ["feige"],
+    "platforms": ["desktop"],
+    "surfaces": ["support"],
+    "capabilities": ["conversation", "ticket", "analytics"],
+    "exclusions": ["consumer", "mobile"],
+    "qualityLevel": "brand-native"
+  },
+  "public:daren-prototype": {
+    "domains": ["commerce", "content"],
+    "products": ["douyin-creator-commerce"],
+    "platforms": ["mobile"],
+    "surfaces": ["creator"],
+    "capabilities": ["browse", "selection", "live", "analytics"],
+    "exclusions": ["merchant", "desktop"],
+    "qualityLevel": "brand-native"
+  },
+  "public:qianchuan-prototype": {
+    "domains": ["commerce", "advertising"],
+    "products": ["qianchuan"],
+    "platforms": ["desktop"],
+    "surfaces": ["advertiser"],
+    "capabilities": ["campaign", "analytics"],
+    "exclusions": ["consumer", "mobile"],
+    "qualityLevel": "brand-native"
+  },
+  "built-in:life-design-system": {
+    "domains": ["local-life"],
+    "products": ["douyin-life"],
+    "platforms": ["desktop"],
+    "surfaces": ["merchant"],
+    "capabilities": ["transaction", "analytics"],
+    "exclusions": ["consumer", "mobile"],
+    "qualityLevel": "brand-native"
+  },
+  "built-in:live-backstage-design-system": {
+    "domains": ["live"],
+    "products": ["tiktok-live-backstage"],
+    "platforms": ["desktop"],
+    "surfaces": ["operations", "creator"],
+    "capabilities": ["campaign", "analytics", "moderation"],
+    "exclusions": ["consumer", "mobile"],
+    "qualityLevel": "brand-native"
+  },
+  "built-in:tns-design-system": {
+    "domains": ["trust-safety"],
+    "products": ["tns-platform"],
+    "platforms": ["desktop"],
+    "surfaces": ["operations"],
+    "capabilities": ["moderation", "analytics"],
+    "exclusions": ["consumer", "mobile"],
+    "qualityLevel": "brand-native"
+  },
+  "built-in:marcom-web": {
+    "domains": ["marketing"],
+    "products": ["tiktok-marcom"],
+    "platforms": ["web"],
+    "surfaces": ["public"],
+    "capabilities": ["landing"],
+    "exclusions": ["product-ui"],
+    "qualityLevel": "brand-native"
+  }
+}
