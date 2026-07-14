@@ -1,9 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+function blockedInspire(root) {
+  const executable = join(root, 'no-visible-skills.mjs');
+  writeFileSync(executable, `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === 'skills') console.log(JSON.stringify({ list: [] }));
+else if (args[0] === 'whoami') console.log(JSON.stringify({ userId: 'tester' }));
+else process.exit(4);
+`);
+  chmodSync(executable, 0o755);
+  return executable;
+}
 
 test('prints usage when required arguments are missing', () => {
   const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs'], {
@@ -31,17 +43,17 @@ test('generates the complete editable demo deliverable', () => {
   assert.match(result.stdout, /index\.html/);
 });
 
-test('stops at a specialist handoff instead of generating a misleading local demo', () => {
+test('keeps the internal handoff but blocks professional delivery when no business Skill is visible', () => {
   const root = mkdtempSync(join(tmpdir(), 'editable-demo-route-'));
   const prd = join(root, 'strategy-prd.md');
   const out = join(root, 'output');
   writeFileSync(prd, `# 智能试穿方案\n\n核心流程：形象入口页 → 图片上传页 → 试穿结果页\n\n## 市场调研\n- 行业快速增长。\n\n## 竞品分析\n- 竞品支持上传服饰。\n\n## 方向判断\n- 优先验证转化。\n\n## 产品方案\n- 用户上传照片并试穿。\n`);
   const result = spawnSync(process.execPath, [
     'bin/prd-to-editable-demo.mjs', '--prd', prd, '--out', out
-  ], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+  ], { cwd: new URL('..', import.meta.url), encoding: 'utf8', env: { ...process.env, INSPIRE_PROTOTYPE_BIN: blockedInspire(root) } });
 
-  assert.equal(result.status, 3, result.stderr);
-  assert.match(result.stderr, /inspire/);
+  assert.equal(result.status, 6, result.stderr);
+  assert.match(result.stderr, /少于两个/);
   assert.throws(() => readFileSync(join(out, 'index.html'), 'utf8'));
   const handoff = JSON.parse(readFileSync(join(out, 'specialist-handoff.json'), 'utf8'));
   const evidenceTemplate = JSON.parse(readFileSync(join(out, 'specialist-evidence.template.json'), 'utf8'));
@@ -66,9 +78,9 @@ test('resolves repeated specialist asset paths without passing mapper metadata t
   writeFileSync(asset, 'fixture');
   const result = spawnSync(process.execPath, [
     'bin/prd-to-editable-demo.mjs', '--prd', prd, '--asset', asset, '--out', out
-  ], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+  ], { cwd: new URL('..', import.meta.url), encoding: 'utf8', env: { ...process.env, INSPIRE_PROTOTYPE_BIN: blockedInspire(root) } });
 
-  assert.equal(result.status, 3, result.stderr);
+  assert.equal(result.status, 6, result.stderr);
   const handoff = JSON.parse(readFileSync(join(out, 'specialist-handoff.json'), 'utf8'));
   assert.deepEqual(handoff.inputs.assets, [asset]);
   assert.equal(handoff.routing.selected, 'inspire');
@@ -98,9 +110,9 @@ test('uses agent-produced semantic IR instead of heuristic dictionaries for spec
   }));
   const result = spawnSync(process.execPath, [
     'bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements', requirements, '--intent', '高保真原型', '--out', out
-  ], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+  ], { cwd: new URL('..', import.meta.url), encoding: 'utf8', env: { ...process.env, INSPIRE_PROTOTYPE_BIN: blockedInspire(root) } });
 
-  assert.equal(result.status, 3, result.stderr);
+  assert.equal(result.status, 6, result.stderr);
   const handoff = JSON.parse(readFileSync(join(out, 'specialist-handoff.json'), 'utf8'));
   assert.equal(handoff.requirements.extractionMode, 'model-semantic');
   assert.deepEqual(handoff.requirements.screens, ['样品提交', '舱位审核', '分配结果']);
@@ -166,8 +178,8 @@ test('professional handoff forbids silent downgrade and fast review is marked no
   writeFileSync(join(professionalRoot, 'prd.md'), '# 专业原型\n申请入口页 → 申请提交页 → 申请结果页\n用户提交申请并查看结果。');
   const professional = spawnSync(process.execPath, [
     'bin/prd-to-editable-demo.mjs', '--prd', join(professionalRoot, 'prd.md'), '--intent', '原生高保真', '--out', join(professionalRoot, 'out')
-  ], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
-  assert.equal(professional.status, 3, professional.stderr);
+  ], { cwd: new URL('..', import.meta.url), encoding: 'utf8', env: { ...process.env, INSPIRE_PROTOTYPE_BIN: blockedInspire(professionalRoot) } });
+  assert.equal(professional.status, 6, professional.stderr);
   const handoff = JSON.parse(readFileSync(join(professionalRoot, 'out', 'specialist-handoff.json'), 'utf8'));
   assert.deepEqual(handoff.qualityAssurance, {
     mode: 'professional', finalContainer: 'inspire', silentDowngradeAllowed: false, readiness: 'preflight-required'

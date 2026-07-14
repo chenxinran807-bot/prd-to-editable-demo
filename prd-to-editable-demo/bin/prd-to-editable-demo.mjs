@@ -10,6 +10,8 @@ import { compileAcceptanceContract } from '../src/acceptance-contract.mjs';
 import { selectRoute } from '../src/select-route.mjs';
 import { renderDemo } from '../src/render-demo.mjs';
 import { writeOutput } from '../src/write-output.mjs';
+import { createInspireClient } from '../src/inspire-client.mjs';
+import { runProfessionalWorkflow } from '../src/professional-workflow.mjs';
 
 export function parseArgs(argv) {
   const options = { assets: [] };
@@ -86,9 +88,39 @@ export async function main(argv = process.argv.slice(2)) {
     await writeFile(`${output}/specialist-evidence.template.json`, `${JSON.stringify({
       specialistEvidence: stageCriteria.map(criterion => ({ criterion, evidence: '' }))
     }, null, 2)}\n`);
-    await writeFile(`${output}/NEXT.md`, `# 专业能力接管\n\n- 执行链：${stages.join(' → ')}\n- 最终交付 Skill：${route.id}\n- 原因：${route.reason}\n- 输入契约：specialist-handoff.json\n- 验收证据模板：specialist-evidence.template.json\n\n统一入口必须按顺序执行计划：前一阶段输出作为后一阶段的需求上下文；不得把 PRD 章节机械生成页面。专业结果完成后填写每项证据，再执行 finalize-specialist 与 verify-specialist；缺少任一步时保持 review-required。\n`);
-    process.stderr.write(`需要执行 ${stages.join(' → ')}，已生成交接包：${route.reason}\n`);
-    return 3;
+    const registry = JSON.parse(await readFile(new URL('../references/design-skill-registry.json', import.meta.url), 'utf8'));
+    const privateAllowlist = Object.entries(registry)
+      .filter(([, metadata]) => metadata.privateAutoUse === 'owner-approved')
+      .map(([identity]) => identity);
+    const client = createInspireClient({ command: process.env.INSPIRE_PROTOTYPE_BIN || 'inspire-prototype' });
+    const visibleSkills = await client.visibleSkills();
+    const workflow = await runProfessionalWorkflow({
+      requirements,
+      auditRequirements,
+      inputs: {
+        assets: options.assets.map(asset => ({ path: resolve(asset), role: 'solution' })),
+        referenceUrl: options.url ?? null
+      },
+      visibleSkills,
+      registry,
+      privateAllowlist,
+      client,
+      references: JSON.parse(await readFile(new URL('../inspire-business-skill/references.json', import.meta.url), 'utf8'))
+    });
+    await writeFile(`${output}/candidate-comparison.json`, `${JSON.stringify(workflow, null, 2)}\n`);
+    if (workflow.status === 'selection-required') {
+      await writeFile(`${output}/design-skill-selection.json`, `${JSON.stringify(workflow, null, 2)}\n`);
+      process.stderr.write('多个业务设计 Skill 匹配度接近，需要用户选择。\n');
+      return 5;
+    }
+    if (workflow.status !== 'comparison-ready') {
+      await writeFile(`${output}/generation-blocker.json`, `${JSON.stringify(workflow, null, 2)}\n`);
+      process.stderr.write('有效 Inspire 候选少于两个，已保留失败证据。\n');
+      return 6;
+    }
+    await writeFile(`${output}/NEXT.md`, '# 选择候选\n\n请预览 candidate-comparison.json 中的候选，并显式选择一个作为后续迭代父版本。\n');
+    process.stdout.write(`${JSON.stringify({ status: workflow.status, candidates: workflow.candidates.map(({ candidateBrief, assetId, previewUrl, inboxDeepLink }) => ({ id: candidateBrief.id, label: candidateBrief.label, assetId, previewUrl, inboxDeepLink })) })}\n`);
+    return 0;
   }
   const manifest = requirementsPath ? semanticRequirementsToModel(requirements) : parsePrd(source);
   manifest.delivery = { mode: route.deliveryMode, formal: false };
