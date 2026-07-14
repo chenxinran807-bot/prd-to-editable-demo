@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "extractionMode": "model-semantic",
+  "confidence": "high",
+  "title": "冷链月台预约",
+  "actor": "承运商",
+  "goal": "获得入仓凭证",
+  "businessObjects": ["月台", "时间窗", "入仓凭证"],
+  "userActions": ["提交", "审核", "批准", "重新提交"],
+  "states": ["待审核", "已批准", "已驳回"],
+  "screens": ["预约申请", "调度审批", "入仓凭证"],
+  "transitions": [
+    { "from": "预约申请", "action": "提交预约", "to": "调度审批", "evidence": "承运商在到仓前提交预约" },
+    { "from": "调度审批", "action": "批准", "to": "入仓凭证", "evidence": "批准后生成入仓凭证" }
+  ],
+  "evidence": [
+    { "kind": "business-object", "term": "月台", "quote": "选择月台和时间窗" },
+    { "kind": "business-object", "term": "时间窗", "quote": "选择月台和时间窗" },
+    { "kind": "business-object", "term": "入仓凭证", "quote": "生成入仓凭证" },
+    { "kind": "user-action", "term": "提交", "quote": "提交预约" },
+    { "kind": "user-action", "term": "审核", "quote": "审核预约" },
+    { "kind": "user-action", "term": "批准", "quote": "批准后" },
+    { "kind": "user-action", "term": "重新提交", "quote": "重新提交" }
+  ],
+  "assumptions": ["界面名称根据任务语义归纳"],
+  "gaps": ["PRD 未说明时间窗冲突规则"]
+}

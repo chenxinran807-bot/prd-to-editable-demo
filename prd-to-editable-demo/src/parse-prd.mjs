@@ -204,10 +204,11 @@ export function parsePrd(source) {
   const flowScreens = extractFlowScreens(source);
   const pageSections = sections.filter(match => !DOCUMENT_SECTION_PATTERN.test(cleanHeading(match[1])));
   const inferred = flowScreens.length < 2 && pageSections.length < 2;
+  const inferredSubject = title.replace(/(?:功能|需求|方案|原型)$/u, '').trim() || title;
   const rawPages = flowScreens.length >= 2
     ? flowScreens.map(screenTitle => ({ title: screenTitle, body: evidenceFor(source, screenTitle) }))
     : inferred
-    ? [{ title: '功能首页', body: source }, { title: '操作结果', body: '展示操作完成结果。' }]
+    ? [{ title, body: source }, { title: `${inferredSubject}处理结果`, body: `展示${inferredSubject}操作完成结果。` }]
     : pageSections.map(match => ({ title: cleanHeading(match[1]), body: match[2].trim() }));
   const pageIds = new Map();
   const pages = rawPages.map((page, index) => {
@@ -281,7 +282,7 @@ export function parsePrd(source) {
     traceability: requirements.traceability,
     startPage: pages[0].id,
     pages,
-    assumptions: inferred ? [{ id: 'assumption-1', statement: '页面结构由简短需求推断为首页和结果页', source: 'parser' }] : [],
+    assumptions: inferred ? [{ id: 'assumption-1', statement: `页面结构由简短需求推断为“${title}”和“${inferredSubject}处理结果”`, source: 'parser' }] : [],
     gaps: inferred ? [{ id: 'gap-1', statement: 'PRD 未明确页面、异常状态和完整跳转规则', impact: 'medium' }] : []
   };
   return validateModel(model);

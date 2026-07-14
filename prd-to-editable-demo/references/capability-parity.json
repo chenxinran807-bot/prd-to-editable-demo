@@ -1,36 +1,31 @@
 {
-  "schemaVersion": 1,
-  "principle": "The unified entry may add traceability and editing, but must not replace or weaken a selected specialist result.",
-  "specialists": {
-    "prd-generator": {
-      "useWhen": ["complex journey", "multiple roles", "product strategy sections", "many branches or states"],
-      "mustPreserve": ["complete user story", "entry-to-outcome paths", "branch and state decisions", "facts separated from assumptions"],
-      "deliveryPolicy": "preserve-specialist-result"
+  "schemaVersion": 2,
+  "principle": "One installed Skill owns the complete core; Inspire is the verified professional container.",
+  "capabilities": {
+    "semantic-understanding": {
+      "useWhen": ["every PRD or product requirement"],
+      "mustPreserve": ["evidence-grounded objects and actions", "task and state relationships", "facts separated from assumptions and gaps"],
+      "deliveryPolicy": "standalone-core"
     },
-    "pm-kakaxi-skills": {
-      "useWhen": ["screenshots", "design drafts", "Figma", "high-fidelity review"],
-      "mustPreserve": ["visual evidence priority", "generation gating", "structured demo context", "facts, inferences and gaps"],
-      "deliveryPolicy": "preserve-specialist-result"
+    "interaction-design": {
+      "useWhen": ["every interactive demo"],
+      "mustPreserve": ["task-derived screens", "complete forward and return paths", "applicable state matrix", "trigger, system behavior and feedback"],
+      "deliveryPolicy": "standalone-core"
     },
-    "vne": {
-      "useWhen": ["React or engineering handoff", "internal component library", "real page URL", "codebase reuse"],
-      "mustPreserve": ["buildable project", "selected design system", "prototype manifest and edit anchors", "build and handoff evidence"],
-      "deliveryPolicy": "preserve-specialist-result"
+    "visual-quality": {
+      "useWhen": ["every visual prototype"],
+      "mustPreserve": ["platform-native hierarchy", "licensed assets and icon provenance", "zero Emoji and fake glyph icons", "subjective visual review"],
+      "deliveryPolicy": "standalone-core"
+    },
+    "editable-runtime": {
+      "useWhen": ["every delivered demo"],
+      "mustPreserve": ["stable editable keys", "text, color, image, icon, position and size editing", "state and navigation editing", "undo and accepted-version lineage"],
+      "deliveryPolicy": "standalone-core"
     },
     "inspire": {
-      "useWhen": ["Inspire canvas", "inbox asset", "cloud prototype iteration"],
-      "mustPreserve": ["official CLI generation", "asset identity and status", "preview and capture links", "official exported bundle or remote edit link"],
-      "deliveryPolicy": "preserve-specialist-result"
-    },
-    "figma-flow": {
-      "useWhen": ["ordered static flow screens", "sliced assets", "pixel or motion fidelity"],
-      "mustPreserve": ["confirmed flow order", "confirmed asset mapping", "coordinate provenance", "asset aspect ratios and interaction timing"],
-      "deliveryPolicy": "preserve-specialist-result"
-    },
-    "open-design": {
-      "useWhen": ["Open Design", "Huashu Design", "brand-level visual exploration", "design workspace iteration"],
-      "mustPreserve": ["design workspace source bundle", "visual system and tokens", "interactive preview", "specialist iteration history"],
-      "deliveryPolicy": "preserve-specialist-result"
+      "useWhen": ["professional, native, branded, high-fidelity, or Inspire-editable delivery"],
+      "mustPreserve": ["official CLI generation", "exact opened and activated business design Skill", "asset identity and accepted parent", "preview and inbox links"],
+      "deliveryPolicy": "professional-container"
     }
   }
 }

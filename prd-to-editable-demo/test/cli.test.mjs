@@ -51,7 +51,7 @@ test('stops at a specialist handoff instead of generating a misleading local dem
   assert.ok(handoff.specialistBaseline.mustPreserve.length >= 3);
   assert.ok(handoff.specialistBaseline.mustPreserve.every(item => handoff.acceptance.includes(item)));
   assert.deepEqual(handoff.routing.stages, ['inspire']);
-  assert.deepEqual(handoff.specialistPlan.map(item => item.id), ['inspire']);
+  assert.deepEqual(handoff.specialistPlan.map(item => item.id), ['semantic-understanding', 'interaction-design', 'visual-quality', 'editable-runtime', 'inspire']);
   assert.ok(handoff.specialistPlan.flatMap(item => item.baseline.mustPreserve).every(criterion => handoff.acceptance.includes(criterion)));
   assert.deepEqual(evidenceTemplate.specialistEvidence.map(item => item.criterion), [...new Set(handoff.specialistPlan.flatMap(item => item.baseline.mustPreserve))]);
   assert.ok(evidenceTemplate.specialistEvidence.every(item => item.evidence === ''));

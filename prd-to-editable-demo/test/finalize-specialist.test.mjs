@@ -37,6 +37,7 @@ test('accepts baseline evidence but waits for rendered preservation before compl
   const criteria = ['complete user story', 'entry-to-outcome paths', 'branch and state decisions', 'facts separated from assumptions'];
   const handoff = {
     routing: { selected: 'prd-generator' }, requirements: { title: '复杂产品' },
+    specialistBaseline: { mustPreserve: criteria },
     specialistEvidence: criteria.map(criterion => ({ criterion, evidence: `reviewed: ${criterion}` }))
   };
 

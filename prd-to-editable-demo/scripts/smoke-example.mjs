@@ -7,7 +7,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = resolve(root, '../../work/prd-to-editable-demo-smoke');
 await rm(output, { recursive: true, force: true });
 const result = spawnSync(process.execPath, [
-  'bin/prd-to-editable-demo.mjs', '--prd', 'fixtures/simple-prd.md', '--out', output
+  'bin/prd-to-editable-demo.mjs', '--prd', 'fixtures/simple-prd.md', '--intent', '快速评审初版，优先速度', '--out', output
 ], { cwd: root, encoding: 'utf8' });
 if (result.status !== 0) throw new Error(result.stderr);
 for (const name of ['index.html', 'prototype.manifest.json', 'prototype.patches.json', 'agent-comments.json', 'demo-summary.md', 'assumptions.md']) {

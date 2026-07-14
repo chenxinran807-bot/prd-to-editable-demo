@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -18,12 +18,23 @@ test('packaged Skill installs without a wrapper directory and runs independently
   assert.match(readFileSync(join(installed, 'bin', 'verify-specialist.mjs'), 'utf8'), /verifySpecialistRender/);
   assert.match(readFileSync(join(installed, 'bin', 'run-inspire-pipeline.mjs'), 'utf8'), /createInspireClient/);
   assert.match(readFileSync(join(installed, 'inspire-business-skill', 'SKILL.md'), 'utf8'), /Douyin Mall/);
+  for (const file of [
+    'references/requirements-ir.md',
+    'references/capability-policy.md',
+    'references/interaction-design.md',
+    'references/visual-quality.md',
+    'references/quality-gates.md',
+    'src/capability-controller.mjs'
+  ]) assert.ok(existsSync(join(installed, file)), `${file} must ship`);
+  assert.match(readFileSync(join(installed, 'scripts', 'package-skill.sh'), 'utf8'), /missing standalone core file/);
 
+  const emptyHome = join(root, 'empty-home');
   const run = spawnSync(process.execPath, [
     join(installed, 'bin', 'prd-to-editable-demo.mjs'),
     '--prd', resolve(new URL('../fixtures/simple-prd.md', import.meta.url).pathname),
+    '--intent', '快速评审初版，优先速度',
     '--out', output
-  ], { encoding: 'utf8' });
+  ], { encoding: 'utf8', env: { ...process.env, HOME: emptyHome, CODEX_HOME: join(emptyHome, '.codex') } });
   assert.equal(run.status, 0, run.stderr);
   assert.match(readFileSync(join(output, 'index.html'), 'utf8'), /去审核/);
 });
