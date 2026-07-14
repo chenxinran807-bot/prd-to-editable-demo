@@ -37,8 +37,18 @@ test('Skill separates host orchestration identity from Inspire Builder design id
   assert.match(source, /外部 Agent 编排 Skill/);
   assert.match(source, /Inspire Builder 业务设计 Skill/);
   assert.match(source, /不得.*private:prd-to-editable-demo.*--skill/);
-  assert.match(source, /douyin-mall-independent-app-prototype-guidance@3/);
+  assert.doesNotMatch(source, /douyin-mall-independent-app-prototype-guidance@\d+/);
   assert.match(source, /activatedSkills/);
   assert.match(source, /openedSkills/);
   assert.match(source, /未.*激活.*打开.*失败/);
+});
+
+test('Skill requires model-semantic extraction and treats heuristics only as low-confidence fallback', async () => {
+  const source = await readFile(new URL('../SKILL.md', import.meta.url), 'utf8');
+  assert.match(source, /model-semantic/);
+  assert.match(source, /--requirements/);
+  assert.match(source, /原文证据/);
+  assert.match(source, /低置信|low-confidence/);
+  assert.match(source, /不得.*词表.*核心/);
+  assert.doesNotMatch(source, /AI 试穿的入口|拍照浮层|相机拍照页/);
 });

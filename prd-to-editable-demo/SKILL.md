@@ -15,6 +15,21 @@ description: Use when a user asks to turn a PRD, requirement document, screensho
 4. 简单、低保真评审可走本地 HTML 快速路径；复杂、多状态、高保真或品牌场景必须进入专业路径，不得静默降级。
 5. 专业路径中，`prd-generator`、`pm-kakaxi-skills`、Open Design、花叔 Design、`figma-flow-to-html-demo`、`vne-prototype` 只提供适用的理解、视觉或工程输入；Inspire 是唯一最终容器。
 
+## 语义理解协议（必须先执行）
+
+Agent 必须完整阅读 PRD，按 [requirements-ir.md](references/requirements-ir.md) 生成 `model-semantic` 需求结构，并为业务对象、用户动作和流转附上可在 PRD 中逐字找到的原文证据。事实、推断与缺口必须分开；不得把业务词表作为核心理解能力，也不得把某个评测案例的页面或状态写进通用规则。
+
+只有证据校验通过后才能进入生成：
+
+```bash
+node bin/prd-to-editable-demo.mjs \
+  --prd <prd-path> \
+  --requirements <semantic-requirements.json> \
+  --out <output-directory>
+```
+
+无法生成语义结构时可省略 `--requirements`，但这只是低置信兜底：必须向用户标明 `heuristic-fallback` 及缺口，不得声称已完整理解 PRD 或达到专业设计基线。
+
 ## 统一入口
 
 ```bash
@@ -30,7 +45,7 @@ node bin/prd-to-editable-demo.mjs --prd <prd-path> --out <output-directory>
 - `prd-to-editable-demo` 是安装在 Aime、Codex 等宿主中的**外部 Agent 编排 Skill**，负责理解 PRD、路由和调用命令。
 - `<source:key@version>` 是 Inspire Builder 运行时可见的**Inspire Builder 业务设计 Skill**，负责生成时的业务视觉与交互约束。
 
-不得把 `private:prd-to-editable-demo` 作为 Inspire 的 `--skill` 参数；它不是 Builder 业务设计包。当前 owner 的抖音商城独立端候选应使用 `private:douyin-mall-independent-app-prototype-guidance@3`。其他使用者必须先从 `inspire-prototype skills visible --json` 中选择自己确实可见的业务设计 Skill，并固定来源与版本。
+不得把 `private:prd-to-editable-demo` 作为 Inspire 的 `--skill` 参数；它不是 Builder 业务设计包。必须先从 `inspire-prototype skills visible --json` 中选择与当前业务匹配、当前账号确实可见的业务设计 Skill，并固定来源、版本与 package hash。通用编排 Skill 不得内置任何 owner、项目或业务专属的设计 Skill 标识；没有匹配能力时必须如实降级或阻塞品牌原生声明。
 
 获得交接包后执行：
 

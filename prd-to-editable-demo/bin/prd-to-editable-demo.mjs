@@ -4,6 +4,8 @@ import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { analyzeRequirements, parsePrd } from '../src/parse-prd.mjs';
+import { validateSemanticRequirements } from '../src/semantic-requirements.mjs';
+import { semanticRequirementsToModel } from '../src/semantic-to-model.mjs';
 import { selectRoute } from '../src/select-route.mjs';
 import { renderDemo } from '../src/render-demo.mjs';
 import { writeOutput } from '../src/write-output.mjs';
@@ -17,6 +19,7 @@ export function parseArgs(argv) {
     else if (token === '--out') options.out = argv[++index];
     else if (token === '--intent') options.intent = argv[++index];
     else if (token === '--url') options.url = argv[++index];
+    else if (token === '--requirements') options.requirements = argv[++index];
   }
   return options;
 }
@@ -24,10 +27,14 @@ export function parseArgs(argv) {
 export async function main(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
   if (!options.prd || !options.out) {
-    process.stderr.write('Usage: prd-to-editable-demo --prd <path> --out <directory> [--asset <path>] [--intent <text>] [--url <url>]\n');
+    process.stderr.write('Usage: prd-to-editable-demo --prd <path> --out <directory> [--requirements <semantic-ir.json>] [--asset <path>] [--intent <text>] [--url <url>]\n');
     return 2;
   }
   const source = await readFile(resolve(options.prd), 'utf8');
+  const requirementsPath = options.requirements ? resolve(options.requirements) : null;
+  const requirements = requirementsPath
+    ? validateSemanticRequirements(JSON.parse(await readFile(requirementsPath, 'utf8')), source)
+    : analyzeRequirements(source);
   const route = selectRoute({ intent: options.intent, assets: options.assets, source, url: options.url });
   if (route.id !== 'local') {
     const output = resolve(options.out);
@@ -39,8 +46,8 @@ export async function main(argv = process.argv.slice(2)) {
     const handoff = {
       schemaVersion: 1,
       routing: { selected: route.id, stages, reason: route.reason, handoff: stages.map(id => `use-${id}-skill`).join('-then-'), status: 'required' },
-      requirements: analyzeRequirements(source),
-      inputs: { prd: resolve(options.prd), assets: options.assets.map(asset => resolve(asset)), referenceUrl: options.url ?? null },
+      requirements,
+      inputs: { prd: resolve(options.prd), semanticRequirements: requirementsPath, assets: options.assets.map(asset => resolve(asset)), referenceUrl: options.url ?? null },
       specialistPlan,
       specialistBaseline,
       acceptance: [
@@ -61,7 +68,7 @@ export async function main(argv = process.argv.slice(2)) {
     process.stderr.write(`需要执行 ${stages.join(' → ')}，已生成交接包：${route.reason}\n`);
     return 3;
   }
-  const manifest = parsePrd(source);
+  const manifest = requirementsPath ? semanticRequirementsToModel(requirements) : parsePrd(source);
   manifest.routing = { selected: route.id, reason: route.reason, handoff: route.id === 'local' ? 'local-fast-path' : `use-${route.id}-skill` };
   if (route.id !== 'local') manifest.assumptions.push({ id: 'route-fallback', statement: `专业路径 ${route.id} 尚未接入，使用本地生成`, source: 'router' });
   const html = renderDemo(manifest);

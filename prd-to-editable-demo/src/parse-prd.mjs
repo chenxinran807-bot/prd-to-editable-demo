@@ -111,6 +111,8 @@ export function analyzeRequirements(source, { title, actor, goal } = {}) {
     ...states.map(term => ({ kind: 'state', term, evidence: evidenceFor(analysisSource, term === '空' ? '空' : term) }))
   ];
   return {
+    extractionMode: 'heuristic-fallback',
+    confidence: 'low',
     title: resolvedTitle,
     actor: actor ?? inferActor(analysisSource, resolvedTitle),
     goal: goal ?? inferGoal(analysisSource),
@@ -120,7 +122,9 @@ export function analyzeRequirements(source, { title, actor, goal } = {}) {
     experienceType: experience.experienceType,
     screens: experience.screens,
     transitions: experience.transitions,
-    traceability
+    traceability,
+    assumptions: ['页面和流程由确定性规则推断，必须由 Agent 或用户复核'],
+    gaps: ['未提供模型语义抽取结果，无法保证理解隐含业务关系']
   };
 }
 
