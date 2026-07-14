@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "extractionMode": "model-semantic",
+  "confidence": "high",
+  "title": "商品下单与支付",
+  "actor": "消费者",
+  "goal": "完成商品购买",
+  "businessObjects": ["商品规格", "库存", "到手价", "地址", "优惠券", "订单"],
+  "userActions": ["选择规格", "立即购买", "选择地址", "选择优惠券", "提交订单", "重新支付"],
+  "states": ["库存不足", "提交中", "支付成功", "支付失败"],
+  "screens": ["规格选择", "确认订单", "支付结果"],
+  "transitions": [
+    { "from": "规格选择", "action": "立即购买", "to": "确认订单", "evidence": "确认库存和到手价后立即购买" },
+    { "from": "确认订单", "action": "提交订单", "to": "支付结果", "evidence": "选择地址和优惠券并提交订单" }
+  ],
+  "evidence": [
+    { "kind": "business-object", "term": "商品规格", "quote": "颜色和尺码规格" },
+    { "kind": "business-object", "term": "库存", "quote": "确认库存" },
+    { "kind": "business-object", "term": "到手价", "quote": "到手价" },
+    { "kind": "business-object", "term": "地址", "quote": "选择地址" },
+    { "kind": "business-object", "term": "优惠券", "quote": "优惠券" },
+    { "kind": "business-object", "term": "订单", "quote": "提交订单" },
+    { "kind": "user-action", "term": "选择规格", "quote": "选择颜色和尺码规格" },
+    { "kind": "user-action", "term": "立即购买", "quote": "立即购买" },
+    { "kind": "user-action", "term": "选择地址", "quote": "选择地址" },
+    { "kind": "user-action", "term": "选择优惠券", "quote": "选择地址和优惠券" },
+    { "kind": "user-action", "term": "提交订单", "quote": "提交订单" },
+    { "kind": "user-action", "term": "重新支付", "quote": "重新支付" }
+  ],
+  "assumptions": ["支付成功与失败共用结果页的不同状态"],
+  "gaps": ["PRD 未说明支付方式和优惠叠加规则"]
+}

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runBenchmark } from '../scripts/run-benchmark.mjs';
 
-test('benchmark separates local demos from specialist handoffs across domains', () => {
+test('benchmark covers ecommerce discovery, checkout, and after-sales flows', () => {
   const report = runBenchmark();
   assert.equal(report.cases.length, 7);
   assert.ok(report.cases.every(item => item.passed), JSON.stringify(report, null, 2));
@@ -11,7 +11,7 @@ test('benchmark separates local demos from specialist handoffs across domains', 
   assert.ok(report.cases.find(item => item.name === 'scheduling')?.businessObjects.includes('排班表'));
   assert.ok(report.cases.find(item => item.name === 'scheduling')?.states.includes('error'));
   assert.ok(report.cases.find(item => item.name === 'simple')?.editable);
-  for (const name of ['cold-chain', 'museum-restoration', 'laboratory-allocation']) {
+  for (const name of ['commerce-discovery', 'commerce-checkout', 'commerce-after-sales']) {
     const item = report.cases.find(candidate => candidate.name === name);
     assert.equal(item?.route, 'inspire');
     assert.ok(item?.businessObjects.length > 0);

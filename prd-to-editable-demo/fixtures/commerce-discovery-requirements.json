@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "extractionMode": "model-semantic",
+  "confidence": "high",
+  "title": "商城商品发现",
+  "actor": "消费者",
+  "goal": "找到并了解目标商品",
+  "businessObjects": ["推荐商品", "关键词", "商品详情"],
+  "userActions": ["浏览", "搜索", "筛选", "查看", "重试", "清除筛选"],
+  "states": ["加载中", "加载失败", "搜索为空"],
+  "screens": ["商城推荐", "商品搜索", "商品详情"],
+  "transitions": [
+    { "from": "商城推荐", "action": "搜索", "to": "商品搜索", "evidence": "可以搜索关键词并按价格和销量筛选" },
+    { "from": "商品搜索", "action": "点击商品卡片", "to": "商品详情", "evidence": "点击商品卡片后查看商品详情" }
+  ],
+  "evidence": [
+    { "kind": "business-object", "term": "推荐商品", "quote": "浏览商城推荐商品" },
+    { "kind": "business-object", "term": "关键词", "quote": "搜索关键词" },
+    { "kind": "business-object", "term": "商品详情", "quote": "查看商品详情" },
+    { "kind": "user-action", "term": "浏览", "quote": "浏览商城推荐商品" },
+    { "kind": "user-action", "term": "搜索", "quote": "搜索关键词" },
+    { "kind": "user-action", "term": "筛选", "quote": "价格和销量筛选" },
+    { "kind": "user-action", "term": "查看", "quote": "查看商品详情" },
+    { "kind": "user-action", "term": "重试", "quote": "可以重试" },
+    { "kind": "user-action", "term": "清除筛选", "quote": "可以清除筛选" }
+  ],
+  "assumptions": ["页面名称根据电商任务语义归纳"],
+  "gaps": ["PRD 未说明推荐排序策略"]
+}

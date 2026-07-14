@@ -13,9 +13,9 @@ export function runBenchmark() {
     { name: 'incomplete', fixture: 'incomplete-prd.md', route: 'local', intent: '快速评审初版，优先速度' },
     { name: 'scheduling', fixture: 'scheduling-prd.md', route: 'local', intent: '快速评审初版，优先速度', expectedStates: ['error'] },
     { name: 'strategy', fixture: 'strategy-prd.md', route: 'inspire', expectedStages: ['inspire'] },
-    { name: 'cold-chain', fixture: 'cold-chain-prd.md', requirements: 'cold-chain-requirements.json', route: 'inspire', expectedScreens: ['预约申请', '调度审批', '入仓凭证'] },
-    { name: 'museum-restoration', fixture: 'museum-restoration-prd.md', requirements: 'museum-restoration-requirements.json', route: 'inspire', expectedScreens: ['藏品登记', '修复评估', '接收凭证'] },
-    { name: 'laboratory-allocation', fixture: 'laboratory-allocation-prd.md', requirements: 'laboratory-allocation-requirements.json', route: 'inspire', expectedScreens: ['样品提交', '舱位审核', '分配结果'] }
+    { name: 'commerce-discovery', fixture: 'commerce-discovery-prd.md', requirements: 'commerce-discovery-requirements.json', route: 'inspire', expectedScreens: ['商城推荐', '商品搜索', '商品详情'] },
+    { name: 'commerce-checkout', fixture: 'commerce-checkout-prd.md', requirements: 'commerce-checkout-requirements.json', route: 'inspire', expectedScreens: ['规格选择', '确认订单', '支付结果'] },
+    { name: 'commerce-after-sales', fixture: 'commerce-after-sales-prd.md', requirements: 'commerce-after-sales-requirements.json', route: 'inspire', expectedScreens: ['订单详情', '售后申请', '售后进度'] }
   ];
   try {
     const cases = definitions.map(definition => {

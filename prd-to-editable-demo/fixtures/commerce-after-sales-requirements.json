@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "extractionMode": "model-semantic",
+  "confidence": "high",
+  "title": "订单售后申请",
+  "actor": "消费者",
+  "goal": "完成退款或退货退款",
+  "businessObjects": ["订单", "商品", "退款金额", "凭证", "售后进度"],
+  "userActions": ["申请退款", "填写原因", "上传凭证", "审核", "补充凭证", "再次提交"],
+  "states": ["待审核", "审核通过", "审核驳回", "退款成功"],
+  "screens": ["订单详情", "售后申请", "售后进度"],
+  "transitions": [
+    { "from": "订单详情", "action": "申请售后", "to": "售后申请", "evidence": "选择商品并申请退款或退货退款" },
+    { "from": "售后申请", "action": "提交申请", "to": "售后进度", "evidence": "填写原因、退款金额并上传凭证" }
+  ],
+  "evidence": [
+    { "kind": "business-object", "term": "订单", "quote": "订单详情" },
+    { "kind": "business-object", "term": "商品", "quote": "选择商品" },
+    { "kind": "business-object", "term": "退款金额", "quote": "退款金额" },
+    { "kind": "business-object", "term": "凭证", "quote": "上传凭证" },
+    { "kind": "business-object", "term": "售后进度", "quote": "展示售后进度" },
+    { "kind": "user-action", "term": "申请退款", "quote": "申请退款" },
+    { "kind": "user-action", "term": "填写原因", "quote": "填写原因" },
+    { "kind": "user-action", "term": "上传凭证", "quote": "上传凭证" },
+    { "kind": "user-action", "term": "审核", "quote": "商家审核" },
+    { "kind": "user-action", "term": "补充凭证", "quote": "补充凭证" },
+    { "kind": "user-action", "term": "再次提交", "quote": "再次提交" }
+  ],
+  "assumptions": ["退款与退货退款共用售后申请流程"],
+  "gaps": ["PRD 未说明商家审核时效和退货物流要求"]
+}

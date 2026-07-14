@@ -357,9 +357,9 @@ Run: `node --test test/package-install.test.mjs`
 
 Expected: FAIL until all references and package assertions exist.
 
-- [ ] **Step 3: Add three unrelated adversarial benchmark cases**
+- [ ] **Step 3: Add three ecommerce adversarial benchmark cases**
 
-Add cold-chain scheduling, museum restoration, and laboratory allocation fixtures. Assertions: semantic screens are not document chapters, no generic placeholder page titles, all transition endpoints exist, and every professional case routes to Inspire.
+Add product discovery, checkout conversion, and after-sales fulfillment fixtures. Assertions: semantic screens are not document chapters, no generic placeholder page titles, all transition endpoints exist, and every professional case routes to Inspire.
 
 - [ ] **Step 4: Strengthen the packaging script**
 
