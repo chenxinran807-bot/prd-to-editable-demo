@@ -3,6 +3,7 @@ const glyphIconPattern = /<(?:span|i|b)[^>]*(?:class|data-role)=["'][^"']*icon[^
 const purpleGradientPattern = /(?:linear|radial)-gradient\([^)]*(?:#(?:7c3aed|8b5cf6|9333ea|a855f7|6d28d9)|\b(?:purple|violet)\b)[^)]*\)/iu;
 const desktopNavigationPattern = /<(?:nav|aside)[^>]*(?:class|data-component)=["'][^"']*(?:desktop|sidebar|left-nav|top-menu)[^"']*["']/iu;
 const fakePhonePattern = /(?:class|data-component)=["'][^"']*(?:phone-frame|device-frame|iphone-frame|mobile-mockup)[^"']*["']/iu;
+const visiblePlaceholderPattern = /(?:图片|主图|商品图|素材|icon|图标)\s*(?:占位|待补|待提供)|(?:价格|销量|标题|文案)\s*(?:待提供|待确认|待补充)/iu;
 
 function failure(rule, message, evidence = []) {
   return { rule, message, evidence };
@@ -59,6 +60,7 @@ export function auditNativeDesign(markup, options = {}) {
   run('no-generic-purple-gradient', purpleGradientPattern.test(source), '检测到通用 AI 风格紫色渐变。');
   run('no-desktop-navigation', desktopNavigationPattern.test(source), '移动端原型包含桌面侧栏或桌面导航模式。');
   run('no-fake-phone-frame', fakePhonePattern.test(source), '最终 Inspire 画布不应再嵌套假手机外框。');
+  run('no-visible-placeholders', visiblePlaceholderPattern.test(source), '正式候选仍展示占位素材或未完成业务文案。');
 
   const urls = assetUrls(source);
   const approvedOrigins = options.approvedOrigins ?? [];

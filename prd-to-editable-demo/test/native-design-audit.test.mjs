@@ -28,6 +28,14 @@ test('rejects generic AI and desktop presentation patterns', () => {
   ]);
 });
 
+test('rejects visible placeholder assets and unresolved commerce copy', () => {
+  const report = auditNativeDesign(`
+    <main><div>商品主图占位</div><p>价格待提供</p><span>销量待确认</span></main>
+  `);
+  assert.equal(report.status, 'failed');
+  assert.ok(report.failures.some(item => item.rule === 'no-visible-placeholders'));
+});
+
 test('rejects external assets and icons without provenance', () => {
   const report = auditNativeDesign(`
     <img src="https://example.com/product.png" alt="商品图">
