@@ -17,6 +17,9 @@
 - Create `src/candidate-briefs.mjs`: derive three distinct but requirement-preserving candidate directions.
 - Create `src/professional-workflow.mjs`: orchestrate preflight, generation, audit, comparison, and partial failure rules.
 - Create `src/candidate-selection.mjs`: validate an explicit choice and promote only that asset into lineage.
+- Create `src/asset-staging.mjs`: classify solution versus reference assets and create bounded parent/child stages.
+- Create `src/frozen-task-contract.mjs`: derive auditable task chains and observable success conditions from semantic requirements.
+- Create `src/browser-qa-contract.mjs`: validate task results, images, network, controls, overflow, and console evidence.
 - Create `bin/select-candidate.mjs`: public fallback CLI for A/B/C text selection.
 - Modify `bin/prd-to-editable-demo.mjs`: run the professional workflow instead of ending at handoff.
 - Modify `bin/run-inspire-pipeline.mjs`: reuse the shared single-candidate workflow path and real acceptance contract.
@@ -30,6 +33,7 @@
 
 **Files:**
 - Create: `src/acceptance-contract.mjs`
+- Create: `src/frozen-task-contract.mjs`
 - Create: `test/acceptance-contract.test.mjs`
 - Modify: `bin/prd-to-editable-demo.mjs`
 - Modify: `test/cli.test.mjs`
@@ -56,6 +60,7 @@ test('compiles PRD screens, actions, states, transitions, labels and editing req
   assert.deepEqual(contract.states, ['库存不足', '提交中', '支付成功', '支付失败']);
   assert.deepEqual(contract.touchLabels, ['立即购买', '提交订单']);
   assert.deepEqual(contract.editableDimensions, ['image', 'icon', 'position', 'size', 'text', 'color', 'visibility', 'state', 'navigation']);
+  assert.ok(contract.frozenTasks.every(task => task.entry && task.steps.length && task.observableOutcome));
 });
 ```
 
@@ -83,10 +88,13 @@ export function compileAcceptanceContract(requirements = {}) {
     transitions,
     components: [...new Set(requirements.requiredComponents ?? [])],
     touchLabels: actions,
-    editableDimensions: EDITABLE_DIMENSIONS
+    editableDimensions: EDITABLE_DIMENSIONS,
+    frozenTasks: compileFrozenTasks(requirements)
   };
 }
 ```
+
+`compileFrozenTasks` must derive task entry, UI-only action sequence, and observable outcome from transitions and states. It must reject success rules that only assert route existence or URL change.
 
 - [ ] **Step 4: Add a failing CLI assertion**
 
@@ -245,6 +253,8 @@ git commit -m "feat: derive comparable Inspire candidate briefs"
 - Create: `test/professional-workflow.test.mjs`
 - Modify: `src/inspire-client.mjs`
 - Modify: `test/inspire-client.test.mjs`
+- Create: `src/asset-staging.mjs`
+- Create: `test/asset-staging.test.mjs`
 
 - [ ] **Step 1: Write failing orchestration tests**
 
@@ -257,6 +267,8 @@ Use an injected client with real method contracts, not a subprocess fixture. Cov
 5. Fewer than two valid candidates return `generation-blocked`.
 6. A candidate whose activated/opened Skill differs is rejected.
 7. A candidate missing a required action or state is rejected.
+8. Thirteen mixed assets are split by role and platform limit instead of being sent in one request.
+9. Solution assets create the parent; competitor/reference assets refine it through explicit `--ref`.
 
 - [ ] **Step 2: Run tests and verify RED**
 
@@ -283,20 +295,22 @@ export async function runProfessionalWorkflow({
 
 The service must return structured status instead of exiting. Generate candidates sequentially by default to make logs and rate-limit behavior deterministic. Preserve all candidate failures with safe error kinds and retry inputs.
 
+Before generation, classify inputs as `solution`, `product`, `brand`, `competitor`, or `context`. Build the initial candidate from solution/product/brand assets within the platform limit. Apply competitor/context assets only as a child refinement with the initial candidate as explicit parent. Persist file hashes, roles, stage arguments, parent and child asset IDs, captures, and exact Skill trace.
+
 - [ ] **Step 4: Refactor Inspire client without changing behavior**
 
 Expose the existing preflight, generate, and asset calls through the injected client contract. Keep exact Skill activation validation in `inspire-client.mjs`; do not duplicate it in the orchestrator.
 
 - [ ] **Step 5: Run focused tests and verify GREEN**
 
-Run: `node --test test/professional-workflow.test.mjs test/inspire-client.test.mjs`
+Run: `node --test test/professional-workflow.test.mjs test/inspire-client.test.mjs test/asset-staging.test.mjs`
 
 Expected: all focused tests pass.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/professional-workflow.mjs test/professional-workflow.test.mjs src/inspire-client.mjs test/inspire-client.test.mjs
+git add src/professional-workflow.mjs test/professional-workflow.test.mjs src/inspire-client.mjs test/inspire-client.test.mjs src/asset-staging.mjs test/asset-staging.test.mjs
 git commit -m "feat: orchestrate three Inspire candidates"
 ```
 
@@ -416,6 +430,8 @@ git commit -m "feat: select one Inspire candidate for iteration"
 - Modify: `scripts/run-benchmark.mjs`
 - Modify: `test/benchmark.test.mjs`
 - Create: `fixtures/commerce-*/expected-professional.json`
+- Create: `src/browser-qa-contract.mjs`
+- Create: `test/browser-qa-contract.test.mjs`
 
 - [ ] **Step 1: Write a failing benchmark assertion**
 
@@ -436,6 +452,8 @@ Require professional benchmark cases to report:
 
 Explicitly reject exit code 3 plus handoff-only output as success.
 
+Also require frozen-task evidence to fail when a click only changes the URL, when the destination cannot be reached from the current UI, when required copy is missing, when a control has no usable semantic role, when an image has zero natural dimensions, or when unapproved external requests fail or abort.
+
 - [ ] **Step 2: Run benchmark test and verify RED**
 
 Run: `node --test test/benchmark.test.mjs`
@@ -444,11 +462,11 @@ Expected: FAIL because the current benchmark treats handoff as success.
 
 - [ ] **Step 3: Implement outcome-based benchmark reporting**
 
-Use controlled official-CLI-compatible fixtures for repeatable CI. Mark reports as `simulated` and ensure they cannot be cited as live visual evidence.
+Use controlled official-CLI-compatible fixtures for repeatable CI. Mark reports as `simulated` and ensure they cannot be cited as live visual evidence. Add raw browser-QA contract validation for task pass counts, direct-navigation prohibition, observable content/state changes, image dimensions, network failures, console errors, overflow and overlap concerns.
 
 - [ ] **Step 4: Run benchmark test and verify GREEN**
 
-Run: `node --test test/benchmark.test.mjs && npm run benchmark`
+Run: `node --test test/benchmark.test.mjs test/browser-qa-contract.test.mjs && npm run benchmark`
 
 Expected: tests pass and all benchmark cases report their evidence class.
 
@@ -532,6 +550,9 @@ Use the official CLI and current authenticated account. Do not use a fake execut
 - exact activated/opened Skill package;
 - candidate audit reports;
 - candidate comparison artifact.
+- frozen browser tasks executed from the entry route without direct destination navigation;
+- image natural dimensions, network failures, console errors, control semantics, overflow and overlap results;
+- staged asset lineage when the input contains more files than one Inspire request permits.
 
 Expected: three valid candidates. If fewer than two succeed, record the blocker and do not claim end-to-end completion.
 
