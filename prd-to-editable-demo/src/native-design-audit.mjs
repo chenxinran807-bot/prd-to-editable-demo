@@ -36,6 +36,11 @@ function normalizeAsset(value) {
   return value.replace(/^\.\//u, '').split(/[?#]/u)[0];
 }
 
+function declaredEditableDimensions(markup) {
+  return new Set([...markup.matchAll(/data-editable\s*=\s*["']([^"']+)["']/giu)]
+    .flatMap(match => match[1].split(/[\s,]+/u).filter(Boolean)));
+}
+
 export function auditNativeDesign(markup, options = {}) {
   const source = typeof markup === 'string' ? markup : JSON.stringify(markup ?? {});
   const requirements = options.requirements ?? {};
@@ -76,6 +81,10 @@ export function auditNativeDesign(markup, options = {}) {
 
   const missingLabels = missingFromMarkup(source, valuesOf(requirements, 'touchLabels'));
   run('touch-labels', missingLabels.length > 0, '必要触控操作缺少可理解的文字标签。', missingLabels);
+
+  const editableDimensions = declaredEditableDimensions(source);
+  const missingEditableDimensions = valuesOf(requirements, 'editableDimensions').filter(item => !editableDimensions.has(item));
+  run('editable-dimensions', missingEditableDimensions.length > 0, '正式交付缺少声明的可编辑维度。', missingEditableDimensions);
 
   return {
     status: failures.length === 0 ? 'passed' : 'failed',

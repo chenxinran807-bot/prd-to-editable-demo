@@ -82,3 +82,11 @@ test('passes deterministic checks but always requires subjective visual review',
   assert.equal(report.subjectiveReview.status, 'required');
   assert.ok(report.checks.length >= 9);
 });
+
+test('requires every declared editing dimension in the rendered result', () => {
+  const report = auditNativeDesign('<main data-editable="text color image icon">内容</main>', {
+    requirements: { editableDimensions: ['text', 'color', 'image', 'icon', 'position', 'size', 'visibility', 'state', 'navigation'] }
+  });
+  assert.equal(report.status, 'failed');
+  assert.deepEqual(report.failures.find(item => item.rule === 'editable-dimensions')?.evidence, ['position', 'size', 'visibility', 'state', 'navigation']);
+});

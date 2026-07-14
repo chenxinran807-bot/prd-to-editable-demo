@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { buildInspirePlan } from '../src/inspire-plan.mjs';
 import { selectRoute } from '../src/select-route.mjs';
 
-test('professional rich PRDs end in Inspire while preserving understanding and visual stages', () => {
+test('professional rich PRDs end in Inspire without peer-Skill stages', () => {
   const source = `${'## 状态\n失败后重试。\n'.repeat(8)}\n![界面](screen.png)`;
   const route = selectRoute({ source });
   assert.equal(route.id, 'inspire');
   assert.equal(route.finalContainer, 'inspire');
-  assert.deepEqual(route.stages, ['prd-generator', 'pm-kakaxi-skills', 'inspire']);
+  assert.deepEqual(route.stages, ['inspire']);
 });
 
 test('builds a reproducible first-generation Inspire plan', () => {
@@ -68,4 +68,16 @@ test('renders browse-type pages and transitions directly into the Inspire prompt
   assert.match(plan.prompt, /页面\/浮层：穿搭 Tab Feed、穿搭详情页、AI 试穿弹窗、商品清单/);
   assert.match(plan.prompt, /穿搭 Tab Feed --点击卡片--> 穿搭详情页/);
   assert.match(plan.prompt, /优先保证 Tab、卡片反馈、详情和弹层的覆盖广度/);
+});
+
+test('professional prompt contains interaction, visual, editability, and quality contracts', () => {
+  const plan = buildInspirePlan({
+    route: { id: 'inspire', stages: ['inspire'], finalContainer: 'inspire' },
+    requirements: { title: '预约服务', actor: '访客', goal: '完成预约', screens: ['预约表单', '预约结果'], transitions: [] },
+    inputs: { assets: [] }, designSkill: 'private:test@1'
+  });
+  assert.match(plan.prompt, /状态矩阵/);
+  assert.match(plan.prompt, /图片、Icon、位置、大小/);
+  assert.match(plan.prompt, /主观视觉审查/);
+  assert.match(plan.prompt, /触发条件.*系统行为.*用户反馈/);
 });

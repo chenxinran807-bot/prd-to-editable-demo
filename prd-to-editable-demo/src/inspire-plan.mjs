@@ -33,9 +33,13 @@ function renderInspirePrompt({ requirements, stages }) {
         ? '这是线性流程型 PRD：按状态机逐步实现主路径、分支、失败重试和回流，不为增加截图数虚构页面。'
         : '先依据明确证据组织页面与状态；不把文档章节标题机械生成为页面。',
     '交付一个可运行、可在 Inspire 中继续编辑的移动端交互原型。',
-    '保持 PRD 事实与推断分离，关键动作必须可点击，异常与中间状态不得遗漏。',
+    '保持 PRD 事实与推断分离；按任务推导页面，不把文档章节机械变成页面。',
+    '交互必须写清触发条件 → 系统行为 → 用户反馈，主流程、返回路径和适用的状态矩阵必须可演示。',
+    '状态矩阵按需覆盖默认、加载、空、错误、禁用、权限和成功；不适用时说明原因，不虚构页面。',
     '使用所选业务设计 Skill 的正式组件、SVG Icon、字体、间距和移动端布局规则。',
-    'Emoji 数量必须为 0；不得用文字字符冒充 Icon；不得生成通用紫色渐变、桌面侧栏、伪手机外壳或无来源品牌标识。'
+    'Emoji 数量必须为 0；不得用文字字符冒充 Icon；不得生成通用紫色渐变、桌面侧栏、伪手机外壳或无来源品牌标识。',
+    '图片、Icon、位置、大小、文字、颜色、显隐、状态和跳转必须可继续编辑并支持撤销。',
+    '生成后提供业务覆盖、流转、素材来源和可编辑性的证据；确定性规则通过后仍需主观视觉审查。'
   ].join('\n');
 }
 
@@ -58,7 +62,7 @@ export function buildInspirePlan({ route, requirements = {}, inputs = {}, design
       finalContainer: 'inspire',
       noEmoji: true,
       preserveAcceptedParent: true,
-      manualEditing: ['image', 'icon', 'position', 'size', 'text', 'color']
+      manualEditing: ['image', 'icon', 'position', 'size', 'text', 'color', 'visibility', 'state', 'navigation']
     }
   };
 }
