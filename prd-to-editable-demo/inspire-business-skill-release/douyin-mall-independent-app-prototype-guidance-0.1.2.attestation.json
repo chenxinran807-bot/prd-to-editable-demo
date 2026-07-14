@@ -1,0 +1,24 @@
+{
+  "generator": "inspire-prototype-skill-generator",
+  "generatorVersion": "0.1.3",
+  "mode": "business-skill",
+  "skillPackage": {
+    "name": "douyin-mall-independent-app-prototype-guidance",
+    "version": "0.1.2",
+    "category": "design-system"
+  },
+  "checkedAt": "2026-07-14T02:40:32.208Z",
+  "packageHash": "10c89579d72a05312cfe8cb9eb49f7607bf1e41dd623a5402b0f8c7060d0a272",
+  "checks": [
+    "SKILL.md frontmatter",
+    "required pre-upload evidence",
+    "business skill name identifies scope",
+    "business skill category is explicit",
+    "previewImages URL hygiene",
+    "package text content budget",
+    "package files exclude _meta",
+    "no local absolute or monorepo-private paths in user-facing files",
+    "user-facing markdown links resolve",
+    "dependencies.json parseable when present"
+  ]
+}

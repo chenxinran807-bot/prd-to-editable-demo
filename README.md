@@ -28,6 +28,8 @@ node prd-to-editable-demo/bin/run-inspire-pipeline.mjs \
   --out ./inspire-delivery
 ```
 
+当前 owner 可用的私有候选是 `private:douyin-mall-independent-app-prototype-guidance@3`。它已通过结构、运行和商业事实边界回归，但仍缺少官方设计源与品牌素材，因此只用于私有验证，尚未分享或公开发布。
+
 已有原型的 Agent 迭代增加 `--ref <当前已接受 assetId>`。命令返回 Inspire 预览和收纳箱链接；图片、Icon、位置、大小、文字和颜色的手动精修直接在 Inspire 中完成，不再导出修改任务给另一个 Agent。
 
 状态码 3 表示“需要专业接管”，不是执行失败。内部可按场景利用 `prd-generator`、`pm-kakaxi-skills`、Open Design、花叔 Design、`vne-prototype` 或 `figma-flow-to-html-demo`，但它们提供的是需求、视觉或工程输入，不再各自成为最终原型容器。

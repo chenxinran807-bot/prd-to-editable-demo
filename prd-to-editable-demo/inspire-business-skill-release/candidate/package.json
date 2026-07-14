@@ -1,0 +1,6 @@
+{
+  "name": "douyin-mall-independent-app-prototype-guidance",
+  "version": "0.1.2",
+  "private": true,
+  "files": ["SKILL.md", "references/"]
+}
