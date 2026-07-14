@@ -4,13 +4,6 @@ import { planAssetStages } from './asset-staging.mjs';
 import { buildInspirePlan } from './inspire-plan.mjs';
 import { auditNativeDesign } from './native-design-audit.mjs';
 
-function auditableSource(asset) {
-  for (const key of ['markup', 'html', 'source', 'content']) {
-    if (typeof asset?.[key] === 'string' && asset[key].trim()) return asset[key];
-  }
-  return null;
-}
-
 function safeFailure(error, candidateBrief) {
   return {
     candidateId: candidateBrief.id,
@@ -53,22 +46,30 @@ export async function runProfessionalWorkflow({
       let parentAssetId = null;
       let generation = null;
       const lineage = [];
-      for (const stage of stages) {
-        const plan = buildInspirePlan({
-          route: { id: 'inspire', stages: ['inspire'], finalContainer: 'inspire' },
-          requirements,
-          inputs: { ...inputs, assets: stage.files.map(file => file.path) },
-          designSkill,
-          parentAssetId,
-          candidateBrief
-        });
-        generation = await client.generate({ ...plan, expectedDesignSkill: preflight.designSkill });
-        lineage.push({ stage, assetId: generation.assetId, parentAssetId });
-        parentAssetId = generation.assetId;
+      const shortCandidateId = candidateBrief.id.replace(/^candidate-/u, '').toUpperCase();
+      const resumedAssetId = inputs.resumeCandidates?.[candidateBrief.id]
+        ?? inputs.resumeCandidates?.[shortCandidateId]
+        ?? null;
+      if (resumedAssetId) {
+        generation = { assetId: resumedAssetId };
+        lineage.push({ stage: { id: 'resume', files: [] }, assetId: resumedAssetId, parentAssetId: null });
+      } else {
+        for (const stage of stages) {
+          const plan = buildInspirePlan({
+            route: { id: 'inspire', stages: ['inspire'], finalContainer: 'inspire' },
+            requirements,
+            inputs: { ...inputs, assets: stage.files.map(file => file.path) },
+            designSkill,
+            parentAssetId,
+            candidateBrief
+          });
+          generation = await client.generate({ ...plan, expectedDesignSkill: preflight.designSkill });
+          lineage.push({ stage, assetId: generation.assetId, parentAssetId });
+          parentAssetId = generation.assetId;
+        }
       }
       const asset = await client.asset(generation.assetId);
-      const source = auditableSource(asset);
-      if (!source) throw Object.assign(new Error('Inspire asset has no auditable source'), { kind: 'audit-source-unavailable' });
+      const source = await client.assetSource(asset);
       const audit = auditNativeDesign(source, { requirements: auditRequirements, references });
       if (audit.status !== 'passed') {
         throw Object.assign(new Error('candidate failed the PRD acceptance contract'), { kind: 'candidate-audit-failed', audit });
@@ -77,7 +78,7 @@ export async function runProfessionalWorkflow({
         candidateBrief,
         designSkill,
         assetId: generation.assetId,
-        previewUrl: generation.previewUrl ?? null,
+        previewUrl: generation.previewUrl ?? asset.previewUrl ?? null,
         inboxDeepLink: generation.inboxDeepLink ?? null,
         audit,
         lineage

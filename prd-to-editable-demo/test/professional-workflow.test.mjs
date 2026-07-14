@@ -29,7 +29,8 @@ function client({ fail = [] } = {}) {
       if (fail.includes(count)) throw new Error(`candidate ${count} failed`);
       return { assetId: `asset-${count}`, previewUrl: `https://preview/${count}`, inboxDeepLink: `inspire://inbox/${count}` };
     },
-    async asset(assetId) { return { assetId, markup }; }
+    async asset(assetId) { return { assetId, markup }; },
+    async assetSource(asset) { return asset.markup; }
   };
 }
 
@@ -77,4 +78,20 @@ test('allows one retryable candidate failure but blocks when fewer than two rema
   });
   assert.equal(blocked.status, 'generation-blocked');
   assert.equal(blocked.candidates.length, 1);
+});
+
+test('resumes successful assets without regenerating completed candidates', async () => {
+  const fake = client();
+  let generated = 0;
+  const originalGenerate = fake.generate;
+  fake.generate = async plan => { generated += 1; return originalGenerate(plan); };
+  const result = await runProfessionalWorkflow({
+    requirements, auditRequirements,
+    inputs: { assets: [], resumeCandidates: { A: 'asset-existing-a', B: 'asset-existing-b' } },
+    visibleSkills, registry, privateAllowlist: [], client: fake, references: { icons: [] }
+  });
+  assert.equal(result.status, 'comparison-ready');
+  assert.equal(generated, 1);
+  assert.deepEqual(result.candidates.slice(0, 2).map(item => item.assetId), ['asset-existing-a', 'asset-existing-b']);
+  assert.ok(result.candidates.slice(0, 2).every(item => item.lineage[0].stage.id === 'resume'));
 });

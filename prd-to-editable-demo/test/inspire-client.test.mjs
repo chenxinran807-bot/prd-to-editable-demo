@@ -117,6 +117,29 @@ test('generation adapter accepts the current direct terminal report shape', asyn
   assert.equal(result.previewUrl, 'https://preview/direct');
 });
 
+test('asset source falls back to the published dist artifact', async () => {
+  const client = createInspireClient({
+    run: scriptedRunner([]).run,
+    fetchImpl: async url => ({
+      ok: true,
+      text: async () => `/* ${url} */ <button data-action="submit">提交</button>`
+    })
+  });
+  const source = await client.assetSource({ distUrl: 'https://cdn.example/prototype.js' });
+  assert.match(source, /data-action="submit"/u);
+});
+
+test('asset source fails closed when the published artifact cannot be read', async () => {
+  const client = createInspireClient({
+    run: scriptedRunner([]).run,
+    fetchImpl: async () => ({ ok: false, status: 403 })
+  });
+  await assert.rejects(
+    () => client.assetSource({ distUrl: 'https://cdn.example/prototype.js' }),
+    error => error instanceof InspireClientError && error.kind === 'audit_source_unavailable'
+  );
+});
+
 test('generation fails closed when the exact business Skill was not opened', async () => {
   const fake = scriptedRunner([{ stdout: JSON.stringify({
     type: 'done', status: 'success', assetId: 'asset-fallback',

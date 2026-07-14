@@ -23,6 +23,11 @@ test('accepts an explicit previously-approved Inspire business design Skill', ()
   assert.equal(options.designSkill, 'private:consumer-mobile@5');
 });
 
+test('accepts repeatable candidate recovery mappings', () => {
+  const options = parseArgs(['--prd', 'prd.md', '--out', 'out', '--resume', 'A=asset-a', '--resume', 'candidate-b=asset-b']);
+  assert.deepEqual(options.resumeCandidates, { A: 'asset-a', 'candidate-b': 'asset-b' });
+});
+
 test('prints usage when required arguments are missing', () => {
   const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs'], {
     cwd: new URL('..', import.meta.url),

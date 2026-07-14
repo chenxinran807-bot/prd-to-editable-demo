@@ -14,7 +14,7 @@ import { createInspireClient } from '../src/inspire-client.mjs';
 import { runProfessionalWorkflow } from '../src/professional-workflow.mjs';
 
 export function parseArgs(argv) {
-  const options = { assets: [] };
+  const options = { assets: [], resumeCandidates: {} };
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
     if (token === '--asset') options.assets.push(argv[++index]);
@@ -24,6 +24,10 @@ export function parseArgs(argv) {
     else if (token === '--url') options.url = argv[++index];
     else if (token === '--requirements') options.requirements = argv[++index];
     else if (token === '--design-skill') options.designSkill = argv[++index];
+    else if (token === '--resume') {
+      const [candidateId, assetId] = String(argv[++index] ?? '').split('=');
+      if (candidateId && assetId) options.resumeCandidates[candidateId] = assetId;
+    }
   }
   return options;
 }
@@ -31,7 +35,7 @@ export function parseArgs(argv) {
 export async function main(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
   if (!options.prd || !options.out) {
-    process.stderr.write('Usage: prd-to-editable-demo --prd <path> --out <directory> [--requirements <semantic-ir.json>] [--asset <path>] [--intent <text>] [--url <url>] [--design-skill <source:key@version>]\n');
+    process.stderr.write('Usage: prd-to-editable-demo --prd <path> --out <directory> [--requirements <semantic-ir.json>] [--asset <path>] [--intent <text>] [--url <url>] [--design-skill <source:key@version>] [--resume <candidate=assetId>]\n');
     return 2;
   }
   const source = await readFile(resolve(options.prd), 'utf8');
@@ -101,7 +105,8 @@ export async function main(argv = process.argv.slice(2)) {
       inputs: {
         assets: options.assets.map(asset => ({ path: resolve(asset), role: 'solution' })),
         referenceUrl: options.url ?? null,
-        prdSource: source
+        prdSource: source,
+        resumeCandidates: options.resumeCandidates
       },
       visibleSkills,
       selectedDesignSkill: options.designSkill ?? null,

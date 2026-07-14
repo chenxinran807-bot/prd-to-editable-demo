@@ -91,7 +91,7 @@ function safeCliError(result) {
   throw new InspireClientError('cli_failed', `Inspire CLI exited with code ${result.code}`, { exitCode: result.code });
 }
 
-export function createInspireClient({ run = defaultRun, command = 'inspire-prototype' } = {}) {
+export function createInspireClient({ run = defaultRun, command = 'inspire-prototype', fetchImpl = globalThis.fetch } = {}) {
   const execute = async args => {
     const result = await run(command, args);
     if (result.code !== 0) safeCliError(result);
@@ -145,6 +145,24 @@ export function createInspireClient({ run = defaultRun, command = 'inspire-proto
     async asset(assetId) {
       if (!assetId) throw new InspireClientError('invalid_asset', 'assetId is required');
       return parseJson(await execute(['asset', assetId, '--json']), 'asset');
+    },
+    async assetSource(asset) {
+      for (const key of ['markup', 'html', 'source', 'content']) {
+        if (typeof asset?.[key] === 'string' && asset[key].trim()) return asset[key];
+      }
+      if (!asset?.distUrl || typeof fetchImpl !== 'function') {
+        throw new InspireClientError('audit_source_unavailable', 'Inspire asset has no auditable source or published dist artifact');
+      }
+      let response;
+      try { response = await fetchImpl(asset.distUrl); } catch {
+        throw new InspireClientError('audit_source_unavailable', 'published Inspire artifact could not be fetched');
+      }
+      if (!response?.ok) {
+        throw new InspireClientError('audit_source_unavailable', 'published Inspire artifact could not be fetched', { status: response?.status });
+      }
+      const source = await response.text();
+      if (!source.trim()) throw new InspireClientError('audit_source_unavailable', 'published Inspire artifact is empty');
+      return source;
     }
   };
   return client;
