@@ -17,6 +17,7 @@ test('packaged Skill installs without a wrapper directory and runs independently
   assert.match(readFileSync(join(installed, 'SKILL.md'), 'utf8'), /name: prd-to-editable-demo/);
   assert.match(readFileSync(join(installed, 'bin', 'verify-specialist.mjs'), 'utf8'), /verifySpecialistRender/);
   assert.match(readFileSync(join(installed, 'bin', 'run-inspire-pipeline.mjs'), 'utf8'), /createInspireClient/);
+  assert.match(readFileSync(join(installed, 'bin', 'select-candidate.mjs'), 'utf8'), /selectCandidate/);
   assert.match(readFileSync(join(installed, 'inspire-business-skill', 'SKILL.md'), 'utf8'), /Douyin Mall/);
   for (const file of [
     'references/requirements-ir.md',
@@ -24,6 +25,7 @@ test('packaged Skill installs without a wrapper directory and runs independently
     'references/interaction-design.md',
     'references/visual-quality.md',
     'references/quality-gates.md',
+    'src/browser-qa-contract.mjs',
     'src/capability-controller.mjs'
   ]) assert.ok(existsSync(join(installed, file)), `${file} must ship`);
   assert.match(readFileSync(join(installed, 'scripts', 'package-skill.sh'), 'utf8'), /missing standalone core file/);

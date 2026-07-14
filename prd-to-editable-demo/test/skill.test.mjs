@@ -71,3 +71,16 @@ test('Skill ships domain-neutral professional design references', async () => {
     assert.doesNotMatch(reference, /AI 试穿的入口|拍照浮层|相机拍照页/);
   }
 });
+
+test('Skill defines the three-candidate professional success contract', async () => {
+  const source = await readFile(new URL('../SKILL.md', import.meta.url), 'utf8');
+  assert.match(source, /3\s*个|三个/);
+  assert.match(source, /同一.*需求.*验收合同/);
+  assert.match(source, /歧义.*用户选择/);
+  assert.match(source, /candidate-comparison\.json/);
+  assert.match(source, /prd-to-editable-demo-select/);
+  assert.match(source, /currentAssetId/);
+  assert.match(source, /交接包.*不.*成功|仅.*handoff.*不.*成功/i);
+  assert.match(source, /预览.*截图.*高保真/);
+  assert.doesNotMatch(source, /状态码\s*3.*专业接管信号/);
+});

@@ -38,7 +38,7 @@ node bin/prd-to-editable-demo.mjs \
 node bin/prd-to-editable-demo.mjs --prd <prd-path> --out <output-directory>
 ```
 
-可重复传入 `--asset <素材路径>`，也可使用 `--intent` 和 `--url`。若输出 `specialist-handoff.json` 并以状态码 3 结束，这是专业接管信号，不是失败。
+可重复传入 `--asset <素材路径>`，也可使用 `--intent` 和 `--url`。专业模式必须继续到 Inspire 候选结果；仅生成 `specialist-handoff.json` 不是成功交付。
 
 ## 交付模式
 
@@ -53,6 +53,19 @@ node bin/prd-to-editable-demo.mjs --prd <prd-path> --out <output-directory>
 - `<source:key@version>` 是 Inspire Builder 运行时可见的**Inspire Builder 业务设计 Skill**，负责生成时的业务视觉与交互约束。
 
 不得把 `private:prd-to-editable-demo` 作为 Inspire 的 `--skill` 参数；它不是 Builder 业务设计包。必须先从 `inspire-prototype skills visible --json` 中选择与当前业务匹配、当前账号确实可见的业务设计 Skill，并固定来源、版本与 package hash。通用编排 Skill 不得内置任何 owner、项目或业务专属的设计 Skill 标识；没有匹配能力时必须如实降级或阻塞品牌原生声明。
+
+默认生成 3 个真实 Inspire 候选。三个候选必须使用同一需求与验收合同、同一业务设计 Skill 和同一素材集，只允许页面结构与视觉方向不同。如果业务设计 Skill 存在歧义，在生成前呈现 2–3 个有证据的匹配项请用户选择；这是生成前唯一正常用户选择点。
+
+生成后写入 `candidate-comparison.json`，其中至少两个候选必须完成真实预览、需求审查和 Skill 激活核对才可比较。用户选定后执行：
+
+```bash
+prd-to-editable-demo-select \
+  --comparison <candidate-comparison.json> \
+  --choice <A|B|C|candidateId|assetId> \
+  --out <selected-candidate.json>
+```
+
+选择产物只将被选候选写入 `currentAssetId`，其他候选标记为 `not-selected`；后续 Agent 修改仅能以该 `currentAssetId` 作为父版本。
 
 获得交接包后执行：
 
@@ -82,6 +95,7 @@ node bin/run-inspire-pipeline.mjs \
 - 禁止通用紫色渐变、桌面侧栏、假手机外壳、无来源品牌标识和未批准外链素材。
 - 必须覆盖 PRD 必要动作、成功/失败/空状态和清晰触控标签。
 - 自动规则通过不等于设计优秀；品牌原生感、视觉层级、素材质量和业务语义仍须主观视觉验收。
+- 真实预览与同视口截图证据都完整时，才能宣称高保真。
 
 ## 编辑与迭代
 
