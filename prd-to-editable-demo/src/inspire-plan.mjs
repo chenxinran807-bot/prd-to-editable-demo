@@ -13,7 +13,15 @@ function transitionList(value) {
   return value.map(item => `${item.from} --${item.action || '操作'}--> ${item.to}`).join('\n');
 }
 
-function renderInspirePrompt({ requirements, stages }) {
+function renderInspirePrompt({ requirements, stages, candidateBrief }) {
+  const candidateContract = candidateBrief ? [
+    `候选方向：${candidateBrief.label}`,
+    `结构策略：${candidateBrief.structuralStrategy}`,
+    `视觉策略：${candidateBrief.visualStrategy}`,
+    `共享需求契约：${candidateBrief.requirementsHash}`,
+    '候选之间只允许改变信息架构、交互组织和视觉层级；不得删除、替换或虚构需求。',
+    ''
+  ] : [];
   return [
     `产品：${requirements.title ?? '未命名产品'}`,
     `用户：${requirements.actor ?? '未明确'}`,
@@ -27,6 +35,7 @@ function renderInspirePrompt({ requirements, stages }) {
     transitionList(requirements.transitions),
     `前置专业阶段：${stages.filter(stage => stage !== 'inspire').join(' → ') || '无'}`,
     '',
+    ...candidateContract,
     requirements.experienceType === 'browse'
       ? '这是多入口浏览型 PRD：优先保证 Tab、卡片反馈、详情和弹层的覆盖广度，并保持各入口返回上下文。'
       : requirements.experienceType === 'linear'
@@ -43,7 +52,7 @@ function renderInspirePrompt({ requirements, stages }) {
   ].join('\n');
 }
 
-export function buildInspirePlan({ route, requirements = {}, inputs = {}, designSkill, parentAssetId = null }) {
+export function buildInspirePlan({ route, requirements = {}, inputs = {}, designSkill, parentAssetId = null, candidateBrief = null }) {
   if (!designSkill) throw new Error('Inspire business design Skill is required for professional delivery');
   if (route?.finalContainer && route.finalContainer !== 'inspire') throw new Error('professional prototype finalContainer must be inspire');
   const stages = route?.stages?.length ? route.stages : ['inspire'];
@@ -56,7 +65,8 @@ export function buildInspirePlan({ route, requirements = {}, inputs = {}, design
     outputType: 'html',
     files: inputs.assets ?? [],
     referenceUrl: inputs.referenceUrl ?? null,
-    prompt: renderInspirePrompt({ requirements, stages }),
+    prompt: renderInspirePrompt({ requirements, stages, candidateBrief }),
+    candidateBrief,
     stages,
     acceptance: {
       finalContainer: 'inspire',

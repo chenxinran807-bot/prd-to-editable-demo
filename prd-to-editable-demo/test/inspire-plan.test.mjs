@@ -81,3 +81,22 @@ test('professional prompt contains interaction, visual, editability, and quality
   assert.match(plan.prompt, /主观视觉审查/);
   assert.match(plan.prompt, /触发条件.*系统行为.*用户反馈/);
 });
+
+test('renders one candidate direction while preserving the shared requirements contract', () => {
+  const candidateBrief = {
+    id: 'candidate-b', label: '内容发现优先',
+    structuralStrategy: '先建立上下文，再逐步进入核心任务。',
+    visualStrategy: '强化内容层级，但不改变业务事实。',
+    requirementsHash: 'shared-hash',
+    mustPreserve: { screens: ['入口', '结果'], actions: ['提交'], states: ['成功'], transitions: [] }
+  };
+  const plan = buildInspirePlan({
+    route: { id: 'inspire', stages: ['inspire'], finalContainer: 'inspire' },
+    requirements: { title: '通用任务', actor: '用户', goal: '完成任务', screens: ['入口', '结果'], userActions: ['提交'], states: ['成功'], transitions: [] },
+    inputs: { assets: [] }, designSkill: 'public:business-system@2', candidateBrief
+  });
+  assert.equal(plan.candidateBrief, candidateBrief);
+  assert.match(plan.prompt, /候选方向：内容发现优先/);
+  assert.match(plan.prompt, /共享需求契约：shared-hash/);
+  assert.match(plan.prompt, /不得删除、替换或虚构需求/);
+});
