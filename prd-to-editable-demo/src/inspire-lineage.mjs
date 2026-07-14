@@ -66,3 +66,20 @@ export function acceptCandidate(lineage, assetId) {
   next.currentAssetId = assetId;
   return next;
 }
+
+export function createSelectionLineage({ candidates, selectedAssetId, designSkill, previousSelection = null }) {
+  if (!Array.isArray(candidates) || candidates.length === 0) throw new Error('selection lineage requires candidates');
+  if (!candidates.some(candidate => candidate.assetId === selectedAssetId)) throw new Error('selected asset is not a candidate');
+  return {
+    schemaVersion: 1,
+    designSkill,
+    currentAssetId: selectedAssetId,
+    previousAssetId: previousSelection?.currentAssetId ?? null,
+    versions: candidates.map(candidate => ({
+      assetId: candidate.assetId,
+      candidateId: candidate.candidateBrief?.id ?? null,
+      parentAssetId: null,
+      acceptanceStatus: candidate.assetId === selectedAssetId ? 'accepted' : 'not-selected'
+    }))
+  };
+}
