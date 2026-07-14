@@ -6,5 +6,6 @@ benchmark/*/demo-summary.md
 benchmark/*/assumptions.md
 prd-to-editable-demo/dist/
 .superpowers/
+.worktrees/
 .DS_Store
 **/.DS_Store
