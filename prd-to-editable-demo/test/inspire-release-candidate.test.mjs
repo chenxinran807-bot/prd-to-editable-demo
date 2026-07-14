@@ -17,12 +17,24 @@ test('release candidate is explicitly scoped and safe for Builder', async () => 
 
 test('release candidate keeps maintainer evidence outside package files', async () => {
   const pkg = JSON.parse(await readFile(new URL('package.json', root), 'utf8'));
-  assert.equal(pkg.version, '0.1.3');
+  assert.equal(pkg.version, '0.1.4');
   assert.deepEqual(pkg.files, ['SKILL.md', 'references/']);
   const evidence = await readdir(new URL('_meta/', root));
   for (const file of ['identify-report.md', 'source-authority-map.md', 'figma-source-manifest.json', 'validation-report.md', 'handoff-notes.md', 'e2e-artifacts.md']) {
     assert.ok(evidence.includes(file), `missing ${file}`);
   }
+});
+
+test('v5 blocks the generic placeholder failures observed in the v4 E2E', async () => {
+  const [foundations, review] = await Promise.all([
+    readFile(new URL('references/foundations.md', root), 'utf8'),
+    readFile(new URL('references/review.md', root), 'utf8')
+  ]);
+  const rules = `${foundations}\n${review}`;
+  assert.match(rules, /不得[^\n]*文字[^\n]*(?:插画|图标)/);
+  assert.match(rules, /连续[^\n]*灰色[^\n]*(?:占位|色块)/);
+  assert.match(rules, /占位[^\n]*(?:构图|层次|比例)/);
+  assert.match(rules, /产品图片|商品图片/);
 });
 
 test('Figma evidence manifest is machine-readable and restricted to the selected source', async () => {

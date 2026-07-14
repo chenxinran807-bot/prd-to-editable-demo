@@ -2,7 +2,7 @@
 
 ## Version
 
-- Candidate source: `douyin-mall-independent-app-prototype-guidance@0.1.3` (intended private platform v4).
+- Candidate source: `douyin-mall-independent-app-prototype-guidance@0.1.4` (private platform v5).
 - Private platform version 1 was technically successful but rejected for visual/business quality.
 - Scope: private E2E only.
 - Public review: blocked pending approved redistributable assets and owner-accepted v4 E2E.
@@ -53,3 +53,10 @@
 - Private source screenshots and brand imagery are not bundled; only derived rules and traceability metadata are retained.
 - E2E asset `6a55d82d627ead027eb0d39e` exactly selected/activated/opened v4 and rendered 8/8 states without compile/runtime errors.
 - Adversarial review accepted the source-backed structure but rejected final visual quality because neutral media and textual illustration/icon substitutes remain generic.
+
+## Candidate v5
+
+- Package: private v5, verified hash `39719f13e0a42cef48778772490ae3aefeedfe637ea9464752b8ba1b61973cbf`.
+- E2E asset: `6a55dd77e980f8026a154e46`; v5 was selected, activated and opened without warnings.
+- Builder replaced textual media substitutes and glyph icons with layered CSS compositions and verified Lucide utility icons.
+- The platform remained in client-side validation after Builder completion and produced no captures within ten minutes. Treat visual acceptance as pending, not failed or passed.

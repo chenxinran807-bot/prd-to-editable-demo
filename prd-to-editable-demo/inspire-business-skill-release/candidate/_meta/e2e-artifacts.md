@@ -51,3 +51,14 @@
 - Requirements result: passed for outfit tabs, two-column feed, attached-product tilt/stack, card-level try-on, fitting-room entry, skeleton, network error and upward-load coverage.
 - Adversarial visual review: structure passed; final visual acceptance failed. Large neutral image blocks, textual illustration/icon substitutes and a generic monochrome shell still lack the native product finish of the selected Figma source.
 - Decision: keep v4 private and do not attach it as accepted public evidence. The next quality gain depends on approved imagery/icons or a reusable authoritative component library, not additional generic styling guesses.
+
+## Case 6: generic-placeholder remediation on v5
+
+- Asset: `6a55dd77e980f8026a154e46`.
+- Preview: https://6a55dd77e980f8026a154e46-prototype.inspire.bytedance.net
+- Package: `private:douyin-mall-independent-app-prototype-guidance@5`.
+- Package hash: `39719f13e0a42cef48778772490ae3aefeedfe637ea9464752b8ba1b61973cbf`.
+- Skill trace: v5 selected, activated and opened; `mobile-shell` also opened; warnings: none.
+- Builder result: normal completion after one round and eight successful tool calls. It replaced textual image/illustration substitutes with layered neutral compositions and verified Lucide utility icons.
+- Validation result: inconclusive. The platform remained in `CLIENT_SIDE_VALIDATING` beyond the ten-minute CLI timeout and returned no captures, compile errors or runtime errors.
+- Decision: code-level remediation passed; rendered visual acceptance remains pending. Do not attach this asset as accepted evidence until captures or an interactive preview can be reviewed.
