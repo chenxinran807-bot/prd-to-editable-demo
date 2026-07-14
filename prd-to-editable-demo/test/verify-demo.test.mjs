@@ -50,3 +50,31 @@ test('rejects a demo that recognizes a declared state but never renders it', () 
   };
   assert.throws(() => verifyDemo({ html: renderDemo(manifest), manifest }), /declared state coverage/);
 });
+
+test('rejects missing compound ecommerce states instead of silently ignoring them', () => {
+  const manifest = {
+    schemaVersion: 1, id: 'compound-state', product: { name: '订单支付' }, persona: { name: '消费者' },
+    requirements: { businessObjects: ['订单'], userActions: ['支付'], states: ['支付成功', '支付失败', '审核中'] },
+    traceability: [], startPage: 'pay',
+    pages: [{ id: 'pay', title: '订单支付', state: 'default', elements: [
+      { key: 'pay.order', type: 'heading', text: '订单', editable: ['text'] },
+      { key: 'pay.action', type: 'button', text: '支付', editable: ['text'] }
+    ] }]
+  };
+  assert.throws(() => verifyDemo({ html: renderDemo(manifest), manifest }), /declared state coverage \(支付成功\)/);
+});
+
+test('accepts compound ecommerce states when semantic page states or visible evidence cover them', () => {
+  const manifest = {
+    schemaVersion: 1, id: 'covered-state', product: { name: '订单支付' }, persona: { name: '消费者' },
+    requirements: { businessObjects: ['订单'], userActions: ['支付'], states: ['支付成功', '支付失败', '审核中'] },
+    traceability: [], startPage: 'pay',
+    pages: [
+      { id: 'pay', title: '订单', state: 'default', elements: [{ key: 'pay.action', type: 'button', text: '支付', editable: ['text'] }] },
+      { id: 'success', title: '支付结果', state: 'success', elements: [{ key: 'success.copy', type: 'heading', text: '订单支付成功', editable: ['text'] }] },
+      { id: 'failure', title: '支付失败', state: 'error', elements: [{ key: 'failure.copy', type: 'heading', text: '支付失败，请重试', editable: ['text'] }] },
+      { id: 'review', title: '审核进度', state: 'loading', elements: [{ key: 'review.copy', type: 'heading', text: '订单审核中', editable: ['text'] }] }
+    ]
+  };
+  assert.doesNotThrow(() => verifyDemo({ html: renderDemo(manifest), manifest }));
+});

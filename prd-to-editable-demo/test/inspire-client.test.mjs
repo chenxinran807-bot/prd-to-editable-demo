@@ -31,6 +31,18 @@ test('preflight checks identity and the exact visible design Skill version', asy
   assert.equal(result.designSkill.version, 1);
 });
 
+test('preflight matches a built-in Skill returned with only the name identity field', async () => {
+  const fake = scriptedRunner([
+    { stdout: JSON.stringify({ loggedIn: true, user: 'tester' }) },
+    { stdout: JSON.stringify({ list: [{ source: 'built-in', name: 'tiktok-design-system' }] }) }
+  ]);
+  const client = createInspireClient({ run: fake.run });
+
+  const result = await client.preflight('built-in:tiktok-design-system');
+  assert.equal(result.designSkill.name, 'tiktok-design-system');
+  assert.equal(result.reference.skillKey, 'tiktok-design-system');
+});
+
 test('preflight rejects an invisible or mismatched pinned Skill', async () => {
   const fake = scriptedRunner([
     { stdout: JSON.stringify({ userId: 'u1' }) },

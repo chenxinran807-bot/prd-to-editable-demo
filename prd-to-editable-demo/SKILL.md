@@ -30,7 +30,7 @@ node bin/prd-to-editable-demo.mjs \
   --out <output-directory>
 ```
 
-无法生成语义结构时可省略 `--requirements`，但这只是低置信兜底：必须向用户标明 `heuristic-fallback` 及缺口，不得声称已完整理解 PRD 或达到专业设计基线。
+无法生成语义结构时可省略 `--requirements`，但这只是低置信兜底：必须向用户标明 `heuristic-fallback` 及缺口，不得声称已完整理解 PRD 或达到专业设计基线。专业模式下，如果兜底解析没有得到明确的页面或页面流转，命令会写出 `requirements-blocker.json` 并以状态码 4 结束；Agent 必须先补齐语义需求结构再继续，不得把空壳交给 Inspire。
 
 ## 统一入口
 

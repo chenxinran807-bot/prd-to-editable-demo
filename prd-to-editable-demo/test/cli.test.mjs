@@ -35,7 +35,7 @@ test('stops at a specialist handoff instead of generating a misleading local dem
   const root = mkdtempSync(join(tmpdir(), 'editable-demo-route-'));
   const prd = join(root, 'strategy-prd.md');
   const out = join(root, 'output');
-  writeFileSync(prd, `# 智能试穿方案\n\n## 市场调研\n- 行业快速增长。\n\n## 竞品分析\n- 竞品支持上传服饰。\n\n## 方向判断\n- 优先验证转化。\n\n## 产品方案\n- 用户上传照片并试穿。\n`);
+  writeFileSync(prd, `# 智能试穿方案\n\n核心流程：形象入口页 → 图片上传页 → 试穿结果页\n\n## 市场调研\n- 行业快速增长。\n\n## 竞品分析\n- 竞品支持上传服饰。\n\n## 方向判断\n- 优先验证转化。\n\n## 产品方案\n- 用户上传照片并试穿。\n`);
   const result = spawnSync(process.execPath, [
     'bin/prd-to-editable-demo.mjs', '--prd', prd, '--out', out
   ], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
@@ -62,7 +62,7 @@ test('resolves repeated specialist asset paths without passing mapper metadata t
   const prd = join(root, 'visual-prd.md');
   const asset = join(root, 'checkout-screen.png');
   const out = join(root, 'output');
-  writeFileSync(prd, '# 结算页\n\n根据截图生成高保真结算页面。');
+  writeFileSync(prd, '# 结算页\n\n购物车页 → 确认订单页 → 支付结果页\n\n根据截图生成高保真结算页面。');
   writeFileSync(asset, 'fixture');
   const result = spawnSync(process.execPath, [
     'bin/prd-to-editable-demo.mjs', '--prd', prd, '--asset', asset, '--out', out
@@ -157,7 +157,7 @@ test('finalizes a specialist bundle through the public CLI', () => {
 
 test('professional handoff forbids silent downgrade and fast review is marked non-formal', () => {
   const professionalRoot = mkdtempSync(join(tmpdir(), 'professional-mode-'));
-  writeFileSync(join(professionalRoot, 'prd.md'), '# 专业原型\n用户提交申请并查看结果。');
+  writeFileSync(join(professionalRoot, 'prd.md'), '# 专业原型\n申请入口页 → 申请提交页 → 申请结果页\n用户提交申请并查看结果。');
   const professional = spawnSync(process.execPath, [
     'bin/prd-to-editable-demo.mjs', '--prd', join(professionalRoot, 'prd.md'), '--intent', '原生高保真', '--out', join(professionalRoot, 'out')
   ], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
@@ -175,4 +175,20 @@ test('professional handoff forbids silent downgrade and fast review is marked no
   assert.equal(fast.status, 0, fast.stderr);
   const manifest = JSON.parse(readFileSync(join(fastRoot, 'out', 'prototype.manifest.json'), 'utf8'));
   assert.deepEqual(manifest.delivery, { mode: 'fast-review', formal: false });
+});
+
+test('professional mode blocks empty heuristic screens and transitions before Inspire', () => {
+  const root = mkdtempSync(join(tmpdir(), 'empty-semantic-professional-'));
+  const prd = join(root, 'prd.md');
+  const out = join(root, 'out');
+  writeFileSync(prd, '# 电商创新方案\n用户可以发现商品并完成转化。');
+  const result = spawnSync(process.execPath, [
+    'bin/prd-to-editable-demo.mjs', '--prd', prd, '--intent', '原生高保真', '--out', out
+  ], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+
+  assert.equal(result.status, 4, result.stderr);
+  assert.throws(() => readFileSync(join(out, 'specialist-handoff.json'), 'utf8'));
+  const blocker = JSON.parse(readFileSync(join(out, 'requirements-blocker.json'), 'utf8'));
+  assert.equal(blocker.status, 'semantic-requirements-required');
+  assert.deepEqual(blocker.missing, ['screens', 'transitions']);
 });

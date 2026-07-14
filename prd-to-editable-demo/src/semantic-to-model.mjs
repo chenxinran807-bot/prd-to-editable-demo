@@ -24,6 +24,11 @@ export function semanticRequirementsToModel(requirements) {
         key: `${id}.object-${index + 1}`, type: 'heading', text: term, editable: ['text', 'style']
       }));
     }
+    requirements.states
+      .filter((_, stateIndex) => stateIndex % requirements.screens.length === pageIndex)
+      .forEach((state, stateIndex) => elements.push({
+        key: `${id}.state-${stateIndex + 1}`, type: 'heading', text: state, editable: ['text', 'style']
+      }));
     for (const [index, transition] of (outgoing.get(title) ?? []).entries()) {
       elements.push({
         key: `${id}.action-${index + 1}`, type: 'button', text: transition.action,

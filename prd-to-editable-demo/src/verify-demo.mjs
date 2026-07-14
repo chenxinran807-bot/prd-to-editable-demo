@@ -15,21 +15,22 @@ export function verifyDemo({ html, manifest }) {
   if ((manifest.traceability ?? []).some(item => !item.evidence?.trim())) {
     throw new Error('quality check failed: traceability evidence');
   }
-  const stateCoverage = {
-    '失败': () => manifest.pages.some(page => page.state === 'error') || visibleCopy.includes('失败'),
-    '错误': () => manifest.pages.some(page => page.state === 'error') || visibleCopy.includes('错误'),
-    '异常': () => manifest.pages.some(page => page.state === 'error') || visibleCopy.includes('异常'),
-    '成功': () => manifest.pages.some(page => page.state === 'success') || visibleCopy.includes('成功'),
-    '空': () => manifest.pages.some(page => page.state === 'empty') || /暂无|为空|空状态/.test(visibleCopy),
-    '处理中': () => visibleCopy.includes('处理中'),
-    '排查中': () => visibleCopy.includes('排查中'),
-    '未开始': () => visibleCopy.includes('未开始'),
-    '已读': () => visibleCopy.includes('已读'),
-    '未读': () => visibleCopy.includes('未读'),
-    '禁用': () => visibleCopy.includes('禁用') || manifest.pages.flatMap(page => page.elements ?? []).some(element => element.disabled)
+  const stateCategory = state => {
+    if (/失败|错误|异常|驳回/u.test(state)) return 'error';
+    if (/成功|完成|通过|已支付|已退款/u.test(state)) return 'success';
+    if (/空|暂无/u.test(state)) return 'empty';
+    if (/加载|处理中|审核中|生成中|上传中|待审核|待确认/u.test(state)) return 'loading';
+    if (/禁用/u.test(state)) return 'disabled';
+    return null;
+  };
+  const coversState = state => {
+    if (visibleCopy.includes(state)) return true;
+    const category = stateCategory(state);
+    if (category === 'disabled') return manifest.pages.flatMap(page => page.elements ?? []).some(element => element.disabled);
+    return category ? manifest.pages.some(page => page.state === category) : false;
   };
   for (const state of manifest.requirements?.states ?? []) {
-    if (stateCoverage[state] && !stateCoverage[state]()) throw new Error(`quality check failed: declared state coverage (${state})`);
+    if (!coversState(state)) throw new Error(`quality check failed: declared state coverage (${state})`);
   }
   const checks = [
     ['doctype', /<!doctype html>/i],

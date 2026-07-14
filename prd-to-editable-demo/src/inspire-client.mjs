@@ -112,11 +112,7 @@ export function createInspireClient({ run = defaultRun, command = 'inspire-proto
       }
       const identity = await client.whoami();
       const visible = await client.visibleSkills();
-      const designSkill = visible.find(item => {
-        const key = item.skillKey ?? item.key;
-        return item.source === wanted.source && key === wanted.skillKey
-          && (wanted.version === null || Number(item.version) === wanted.version);
-      });
+      const designSkill = visible.find(item => sameSkillPackage(item, wanted));
       if (!designSkill) throw new InspireClientError('design_skill_not_visible', 'the pinned Inspire business design Skill is not visible');
       return { identity, designSkill, reference: wanted };
     },

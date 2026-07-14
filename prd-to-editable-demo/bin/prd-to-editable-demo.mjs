@@ -36,6 +36,24 @@ export async function main(argv = process.argv.slice(2)) {
     ? validateSemanticRequirements(JSON.parse(await readFile(requirementsPath, 'utf8')), source)
     : analyzeRequirements(source);
   const route = selectRoute({ intent: options.intent, assets: options.assets, source, url: options.url });
+  if (route.deliveryMode === 'professional') {
+    const missing = ['screens', 'transitions'].filter(field => !Array.isArray(requirements[field]) || requirements[field].length === 0);
+    if (missing.length) {
+      const output = resolve(options.out);
+      await rm(output, { recursive: true, force: true });
+      await mkdir(output, { recursive: true });
+      await writeFile(`${output}/requirements-blocker.json`, `${JSON.stringify({
+        schemaVersion: 1,
+        status: 'semantic-requirements-required',
+        extractionMode: requirements.extractionMode,
+        missing,
+        action: '宿主 Agent 必须根据完整 PRD 生成带原文证据的 model-semantic 结构后重新运行',
+        resumeCommand: 'prd-to-editable-demo --requirements <semantic-requirements.json>'
+      }, null, 2)}\n`);
+      process.stderr.write(`专业模式缺少语义结构：${missing.join('、')}；已生成 requirements-blocker.json\n`);
+      return 4;
+    }
+  }
   if (route.id !== 'local') {
     const output = resolve(options.out);
     const parity = JSON.parse(await readFile(new URL('../references/capability-parity.json', import.meta.url), 'utf8'));
