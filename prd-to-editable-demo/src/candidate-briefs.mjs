@@ -5,7 +5,9 @@ function invariant(requirements) {
     screens: requirements.screens ?? [],
     actions: requirements.userActions ?? [],
     states: requirements.states ?? [],
-    transitions: requirements.transitions ?? []
+    transitions: requirements.transitions ?? [],
+    pageContent: requirements.pageContent ?? [],
+    informationArchitecture: requirements.informationArchitecture ?? []
   };
 }
 

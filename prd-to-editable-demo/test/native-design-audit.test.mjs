@@ -90,3 +90,14 @@ test('requires every declared editing dimension in the rendered result', () => {
   assert.equal(report.status, 'failed');
   assert.deepEqual(report.failures.find(item => item.rule === 'editable-dimensions')?.evidence, ['position', 'size', 'visibility', 'state', 'navigation']);
 });
+
+test('rejects missing page content and flattened information architecture', () => {
+  const report = auditNativeDesign('<main><h1>内容详情</h1><p>核心说明</p><button>分类甲</button></main>', {
+    requirements: {
+      pageContent: [{ screen: '内容详情', elements: ['核心说明', '规格提醒', '对象清单'] }],
+      informationArchitecture: [{ parent: '内容列表', children: ['分类甲', '分类乙', '分类丙'] }]
+    }
+  });
+  assert.deepEqual(report.failures.find(item => item.rule === 'page-content-coverage')?.evidence, ['内容详情：规格提醒', '内容详情：对象清单']);
+  assert.deepEqual(report.failures.find(item => item.rule === 'information-architecture')?.evidence, ['内容列表：分类乙', '内容列表：分类丙']);
+});

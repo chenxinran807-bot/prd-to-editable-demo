@@ -19,7 +19,7 @@ description: Use when a user asks to turn a PRD, requirement document, screensho
 
 ## 语义理解协议（必须先执行）
 
-Agent 必须完整阅读 PRD，按 [requirements-ir.md](references/requirements-ir.md) 生成 `model-semantic` 需求结构，并为业务对象、用户动作和流转附上可在 PRD 中逐字找到的原文证据。事实、推断与缺口必须分开；不得把业务词表作为核心理解能力，也不得把某个评测案例的页面或状态写进通用规则。
+Agent 必须完整阅读 PRD，按 [requirements-ir.md](references/requirements-ir.md) 生成 `model-semantic` 需求结构，并为业务对象、用户动作和流转附上可在 PRD 中逐字找到的原文证据。对信息密度或分类层级有要求时，还必须生成 `pageContent` 页面内容清单和 `informationArchitecture` 分类/层级合同。结构化合同与完整 PRD 原文一起传入 Inspire，信息保留率不得通过摘要方式下降。事实、推断与缺口必须分开；不得把业务词表作为核心理解能力，也不得把某个评测案例的页面或状态写进通用规则。
 
 只有证据校验通过后才能进入生成：
 

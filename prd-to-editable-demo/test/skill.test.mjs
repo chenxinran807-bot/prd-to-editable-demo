@@ -84,3 +84,11 @@ test('Skill defines the three-candidate professional success contract', async ()
   assert.match(source, /预览.*截图.*高保真/);
   assert.doesNotMatch(source, /状态码\s*3.*专业接管信号/);
 });
+
+test('Skill prevents structured prompts from compressing away page detail and hierarchy', async () => {
+  const source = await readFile(new URL('../SKILL.md', import.meta.url), 'utf8');
+  assert.match(source, /pageContent/);
+  assert.match(source, /informationArchitecture/);
+  assert.match(source, /完整 PRD 原文/);
+  assert.match(source, /信息保留率/);
+});

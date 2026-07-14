@@ -82,6 +82,16 @@ export function auditNativeDesign(markup, options = {}) {
   const missingLabels = missingFromMarkup(source, valuesOf(requirements, 'touchLabels'));
   run('touch-labels', missingLabels.length > 0, '必要触控操作缺少可理解的文字标签。', missingLabels);
 
+  const missingPageContent = (requirements.pageContent ?? []).flatMap(page =>
+    (page.elements ?? []).filter(element => !source.includes(element)).map(element => `${page.screen}：${element}`)
+  );
+  run('page-content-coverage', missingPageContent.length > 0, '页面内容清单未完整呈现，信息密度可能因结构化而丢失。', missingPageContent);
+
+  const missingInformationArchitecture = (requirements.informationArchitecture ?? []).flatMap(group =>
+    (group.children ?? []).filter(child => !source.includes(child)).map(child => `${group.parent}：${child}`)
+  );
+  run('information-architecture', missingInformationArchitecture.length > 0, 'PRD 声明的分类或层级结构被遗漏或拍平。', missingInformationArchitecture);
+
   const editableDimensions = declaredEditableDimensions(source);
   const missingEditableDimensions = valuesOf(requirements, 'editableDimensions').filter(item => !editableDimensions.has(item));
   run('editable-dimensions', missingEditableDimensions.length > 0, '正式交付缺少声明的可编辑维度。', missingEditableDimensions);

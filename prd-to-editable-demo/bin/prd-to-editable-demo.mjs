@@ -70,7 +70,7 @@ export async function main(argv = process.argv.slice(2)) {
       routing: { selected: route.id, stages, reason: route.reason, handoff: stages.map(id => `use-${id}-skill`).join('-then-'), status: 'required' },
       requirements,
       auditRequirements,
-      inputs: { prd: resolve(options.prd), semanticRequirements: requirementsPath, assets: options.assets.map(asset => resolve(asset)), referenceUrl: options.url ?? null },
+      inputs: { prd: resolve(options.prd), semanticRequirements: requirementsPath, assets: options.assets.map(asset => resolve(asset)), referenceUrl: options.url ?? null, sourceBytes: Buffer.byteLength(source, 'utf8') },
       qualityAssurance: { mode: route.deliveryMode, finalContainer: 'inspire', silentDowngradeAllowed: false, readiness: 'preflight-required' },
       specialistPlan,
       specialistBaseline,
@@ -99,7 +99,8 @@ export async function main(argv = process.argv.slice(2)) {
       auditRequirements,
       inputs: {
         assets: options.assets.map(asset => ({ path: resolve(asset), role: 'solution' })),
-        referenceUrl: options.url ?? null
+        referenceUrl: options.url ?? null,
+        prdSource: source
       },
       visibleSkills,
       registry,

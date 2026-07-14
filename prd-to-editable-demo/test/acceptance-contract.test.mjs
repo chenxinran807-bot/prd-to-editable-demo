@@ -64,3 +64,13 @@ test('deduplicates actions shared by explicit actions and transitions', () => {
 
   assert.deepEqual(contract.actions, ['选择对象', '提交修改', '重新处理']);
 });
+
+test('keeps page content and information hierarchy as acceptance requirements', () => {
+  const contract = compileAcceptanceContract({
+    screens: ['列表', '详情'], userActions: [], states: [], transitions: [],
+    pageContent: [{ screen: '详情', elements: ['说明', '提醒', '清单'] }],
+    informationArchitecture: [{ parent: '列表', children: ['分类一', '分类二'] }]
+  });
+  assert.deepEqual(contract.pageContent[0].elements, ['说明', '提醒', '清单']);
+  assert.deepEqual(contract.informationArchitecture[0].children, ['分类一', '分类二']);
+});

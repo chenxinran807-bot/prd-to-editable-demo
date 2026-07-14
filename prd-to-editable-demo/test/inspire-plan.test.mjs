@@ -82,6 +82,24 @@ test('professional prompt contains interaction, visual, editability, and quality
   assert.match(plan.prompt, /触发条件.*系统行为.*用户反馈/);
 });
 
+test('preserves original PRD detail, page content, and information architecture in the prompt', () => {
+  const plan = buildInspirePlan({
+    route: { id: 'inspire', stages: ['inspire'], finalContainer: 'inspire' },
+    requirements: {
+      title: '商品内容', actor: '用户', goal: '理解并决策', screens: ['内容列表', '内容详情'],
+      pageContent: [{ screen: '内容详情', elements: ['核心说明', '规格提醒', '对象清单'] }],
+      informationArchitecture: [{ parent: '内容列表', children: ['分类甲', '分类乙', '分类丙'] }]
+    },
+    inputs: { assets: [], prdSource: '这是一段不得被压缩丢失的 PRD 详细原文。' },
+    designSkill: 'public:business-system@2'
+  });
+  assert.match(plan.prompt, /页面内容清单：内容详情/);
+  assert.match(plan.prompt, /核心说明、规格提醒、对象清单/);
+  assert.match(plan.prompt, /信息架构：内容列表/);
+  assert.match(plan.prompt, /分类甲、分类乙、分类丙/);
+  assert.match(plan.prompt, /不得被压缩丢失的 PRD 详细原文/);
+});
+
 test('renders one candidate direction while preserving the shared requirements contract', () => {
   const candidateBrief = {
     id: 'candidate-b', label: '内容发现优先',

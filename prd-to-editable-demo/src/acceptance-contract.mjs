@@ -19,6 +19,8 @@ export function compileAcceptanceContract(requirements = {}) {
     actions,
     states: unique(requirements.states),
     transitions,
+    pageContent: structuredClone(requirements.pageContent ?? []),
+    informationArchitecture: structuredClone(requirements.informationArchitecture ?? []),
     components: unique(requirements.requiredComponents),
     touchLabels: actions,
     editableDimensions: EDITABLE_DIMENSIONS,

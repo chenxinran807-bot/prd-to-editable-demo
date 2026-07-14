@@ -17,6 +17,8 @@ test('accepts evidence-grounded semantic IR without relying on a product diction
     userActions: ['预约', '批准', '驳回', '重新提交'],
     states: ['待审批', '已批准', '已驳回'],
     screens: ['预约申请', '调度审批', '入仓凭证'],
+    pageContent: [{ screen: '入仓凭证', elements: ['月台号', '入仓时间', '凭证码'], evidence: '批准后生成入仓凭证' }],
+    informationArchitecture: [{ parent: '预约申请', children: ['月台', '时间窗'], evidence: '预约月台和时间窗' }],
     transitions: [
       { from: '预约申请', action: '提交预约', to: '调度审批', evidence: '调度员可以批准或驳回预约' },
       { from: '调度审批', action: '批准', to: '入仓凭证', evidence: '批准后生成入仓凭证' }
@@ -36,6 +38,8 @@ test('accepts evidence-grounded semantic IR without relying on a product diction
 
   assert.equal(result.extractionMode, 'model-semantic');
   assert.deepEqual(result.businessObjects, ['月台', '时间窗', '入仓凭证']);
+  assert.deepEqual(result.pageContent[0].elements, ['月台号', '入仓时间', '凭证码']);
+  assert.deepEqual(result.informationArchitecture[0].children, ['月台', '时间窗']);
 });
 
 test('rejects semantic claims whose evidence is not present in the PRD', () => {

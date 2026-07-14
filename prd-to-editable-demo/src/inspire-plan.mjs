@@ -13,7 +13,17 @@ function transitionList(value) {
   return value.map(item => `${item.from} --${item.action || '操作'}--> ${item.to}`).join('\n');
 }
 
-function renderInspirePrompt({ requirements, stages, candidateBrief }) {
+function pageContentList(value) {
+  if (!Array.isArray(value) || !value.length) return '未明确';
+  return value.map(item => `页面内容清单：${item.screen} → ${list(item.elements)}`).join('\n');
+}
+
+function informationArchitectureList(value) {
+  if (!Array.isArray(value) || !value.length) return '未明确';
+  return value.map(item => `信息架构：${item.parent} → ${list(item.children)}`).join('\n');
+}
+
+function renderInspirePrompt({ requirements, stages, candidateBrief, prdSource }) {
   const candidateContract = candidateBrief ? [
     `候选方向：${candidateBrief.label}`,
     `结构策略：${candidateBrief.structuralStrategy}`,
@@ -33,6 +43,8 @@ function renderInspirePrompt({ requirements, stages, candidateBrief }) {
     `页面/浮层：${list(requirements.screens)}`,
     '流转规则：',
     transitionList(requirements.transitions),
+    pageContentList(requirements.pageContent),
+    informationArchitectureList(requirements.informationArchitecture),
     `前置专业阶段：${stages.filter(stage => stage !== 'inspire').join(' → ') || '无'}`,
     '',
     ...candidateContract,
@@ -48,7 +60,10 @@ function renderInspirePrompt({ requirements, stages, candidateBrief }) {
     '使用所选业务设计 Skill 的正式组件、SVG Icon、字体、间距和移动端布局规则。',
     'Emoji 数量必须为 0；不得用文字字符冒充 Icon；不得生成通用紫色渐变、桌面侧栏、伪手机外壳或无来源品牌标识。',
     '图片、Icon、位置、大小、文字、颜色、显隐、状态和跳转必须可继续编辑并支持撤销。',
-    '生成后提供业务覆盖、流转、素材来源和可编辑性的证据；确定性规则通过后仍需主观视觉审查。'
+    '生成后提供业务覆盖、流转、素材来源和可编辑性的证据；确定性规则通过后仍需主观视觉审查。',
+    '',
+    '以下为完整 PRD 原文，只能补充结构化合同的内容细节，不得覆盖合同或把章节标题机械生成为页面：',
+    prdSource?.trim() || '未提供'
   ].join('\n');
 }
 
@@ -65,7 +80,7 @@ export function buildInspirePlan({ route, requirements = {}, inputs = {}, design
     outputType: 'html',
     files: inputs.assets ?? [],
     referenceUrl: inputs.referenceUrl ?? null,
-    prompt: renderInspirePrompt({ requirements, stages, candidateBrief }),
+    prompt: renderInspirePrompt({ requirements, stages, candidateBrief, prdSource: inputs.prdSource }),
     candidateBrief,
     stages,
     acceptance: {

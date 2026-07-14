@@ -15,6 +15,32 @@ function assertEvidenceInSource(quote, source, path) {
   if (!source.includes(quote)) throw new Error(`${path}: evidence quote is not present in the PRD`);
 }
 
+function normalizePageContent(value, source, screens) {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw new Error('pageContent must be an array');
+  return value.map((item, index) => {
+    if (!item || typeof item !== 'object') throw new Error(`pageContent[${index}] must be an object`);
+    const screen = requireString(item.screen, `pageContent[${index}].screen`);
+    if (!screens.includes(screen)) throw new Error(`pageContent screen must be declared in screens: ${screen}`);
+    const evidence = requireString(item.evidence, `pageContent[${index}].evidence`);
+    assertEvidenceInSource(evidence, source, `pageContent[${index}].evidence`);
+    return { screen, elements: requireStringArray(item.elements, `pageContent[${index}].elements`), evidence };
+  });
+}
+
+function normalizeInformationArchitecture(value, source, screens) {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw new Error('informationArchitecture must be an array');
+  return value.map((item, index) => {
+    if (!item || typeof item !== 'object') throw new Error(`informationArchitecture[${index}] must be an object`);
+    const parent = requireString(item.parent, `informationArchitecture[${index}].parent`);
+    if (!screens.includes(parent)) throw new Error(`informationArchitecture parent must be declared in screens: ${parent}`);
+    const evidence = requireString(item.evidence, `informationArchitecture[${index}].evidence`);
+    assertEvidenceInSource(evidence, source, `informationArchitecture[${index}].evidence`);
+    return { parent, children: requireStringArray(item.children, `informationArchitecture[${index}].children`), evidence };
+  });
+}
+
 export function validateSemanticRequirements(input, source) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('semantic requirements must be an object');
   if (input.schemaVersion !== 1) throw new Error('schemaVersion must be 1');
@@ -57,6 +83,8 @@ export function validateSemanticRequirements(input, source) {
     assumptions: requireStringArray(input.assumptions, 'assumptions'),
     gaps: requireStringArray(input.gaps, 'gaps')
   };
+  result.pageContent = normalizePageContent(input.pageContent, source, result.screens);
+  result.informationArchitecture = normalizeInformationArchitecture(input.informationArchitecture, source, result.screens);
 
   for (const transition of result.transitions) {
     if (!result.screens.includes(transition.from) || !result.screens.includes(transition.to)) {
