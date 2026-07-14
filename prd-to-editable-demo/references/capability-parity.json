@@ -7,7 +7,7 @@
       "mustPreserve": ["complete user story", "entry-to-outcome paths", "branch and state decisions", "facts separated from assumptions"],
       "deliveryPolicy": "preserve-specialist-result"
     },
-    "pm-kakaxi": {
+    "pm-kakaxi-skills": {
       "useWhen": ["screenshots", "design drafts", "Figma", "high-fidelity review"],
       "mustPreserve": ["visual evidence priority", "generation gating", "structured demo context", "facts, inferences and gaps"],
       "deliveryPolicy": "preserve-specialist-result"

@@ -73,7 +73,7 @@ test('resolves repeated specialist asset paths without passing mapper metadata t
   const handoff = JSON.parse(readFileSync(join(out, 'specialist-handoff.json'), 'utf8'));
   assert.deepEqual(handoff.inputs.assets, [asset]);
   assert.equal(handoff.routing.selected, 'inspire');
-  assert.deepEqual(handoff.routing.stages, ['pm-kakaxi', 'inspire']);
+  assert.deepEqual(handoff.routing.stages, ['pm-kakaxi-skills', 'inspire']);
 });
 
 test('finalizes a specialist bundle through the public CLI', () => {

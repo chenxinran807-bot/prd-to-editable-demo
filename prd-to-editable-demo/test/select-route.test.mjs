@@ -27,11 +27,17 @@ test('ordinary PRD uses the local fast path', () => {
 });
 
 test('visual design input routes to the high-fidelity specialist', () => {
-  assert.deepEqual(selectRoute({ intent: '根据截图做高保真原型', assets: ['screen.png'] }).stages, ['pm-kakaxi', 'inspire']);
+  assert.deepEqual(selectRoute({ intent: '根据截图做高保真原型', assets: ['screen.png'] }).stages, ['pm-kakaxi-skills', 'inspire']);
+});
+
+test('routing emits the installed Kakaxi Skill identity rather than an unresolvable alias', () => {
+  const route = selectRoute({ intent: '使用 kakaxi 生成高保真原型', assets: ['screen.png'] });
+  assert.ok(route.stages.includes('pm-kakaxi-skills'));
+  assert.ok(!route.stages.includes('pm-kakaxi'));
 });
 
 test('a clearly named screen asset routes to high fidelity even without repeated intent words', () => {
-  assert.deepEqual(selectRoute({ intent: '做个评审原型', assets: ['checkout-screen.png'] }).stages, ['pm-kakaxi', 'inspire']);
+  assert.deepEqual(selectRoute({ intent: '做个评审原型', assets: ['checkout-screen.png'] }).stages, ['pm-kakaxi-skills', 'inspire']);
 });
 
 test('a reference URL routes to the specialist that can inspect the real page', () => {
@@ -51,5 +57,5 @@ test('complex rich-document PRD uses understanding then high-fidelity stages', (
   const source = `${'## 模块\n需求状态处理中，删除后支持重试。\n'.repeat(5)}\n![参考界面](screen.png)`;
   const route = selectRoute({ intent: '', assets: [], source });
   assert.equal(route.id, 'inspire');
-  assert.deepEqual(route.stages, ['prd-generator', 'pm-kakaxi', 'inspire']);
+  assert.deepEqual(route.stages, ['prd-generator', 'pm-kakaxi-skills', 'inspire']);
 });

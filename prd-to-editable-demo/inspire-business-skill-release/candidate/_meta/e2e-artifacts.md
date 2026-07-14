@@ -39,3 +39,15 @@
 - Technical result: success, 2/2 captures, expected private Skill selected/activated/opened.
 - Requirements result: passed the missing-commerce-data protocol; only explicit placeholders were used.
 - Visual result: not accepted yet. The output remains a generic mobile-commerce shell because no authoritative design system or approved product/brand asset is available.
+
+## Case 5: owner-selected AI try-on source regression on v4
+
+- Asset: `6a55d82d627ead027eb0d39e`.
+- Preview: https://6a55d82d627ead027eb0d39e-prototype.inspire.bytedance.net
+- Package: `private:douyin-mall-independent-app-prototype-guidance@4`.
+- Package hash: `4d7657728305369e631da47df322f52416be916b324c1508c50791a4255a4fbc`.
+- Skill trace: v4 selected, activated and opened; `mobile-shell` also opened; warnings: none.
+- Technical result: success; compile success; 8/8 captures; no runtime errors or autofix.
+- Requirements result: passed for outfit tabs, two-column feed, attached-product tilt/stack, card-level try-on, fitting-room entry, skeleton, network error and upward-load coverage.
+- Adversarial visual review: structure passed; final visual acceptance failed. Large neutral image blocks, textual illustration/icon substitutes and a generic monochrome shell still lack the native product finish of the selected Figma source.
+- Decision: keep v4 private and do not attach it as accepted public evidence. The next quality gain depends on approved imagery/icons or a reusable authoritative component library, not additional generic styling guesses.

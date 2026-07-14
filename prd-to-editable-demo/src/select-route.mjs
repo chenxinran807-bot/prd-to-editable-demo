@@ -27,13 +27,13 @@ export function selectRoute({ intent = '', assets = [], source = '', url } = {})
     return toInspire(['figma-flow'], '先按完整流程素材精确还原，再交付到 Inspire');
   }
   if (isComplex && hasVisualEvidence) {
-    return toInspire(['prd-generator', 'pm-kakaxi'], '复杂 PRD 同时包含视觉证据，先完成产品级理解和高保真生成，再交付到 Inspire');
+    return toInspire(['prd-generator', 'pm-kakaxi-skills'], '复杂 PRD 同时包含视觉证据，先完成产品级理解和高保真生成，再交付到 Inspire');
   }
   if (/(截图|设计稿|组件库|高保真|视觉还原|kakaxi)/i.test(normalized)) {
-    return toInspire(['pm-kakaxi'], '先根据视觉输入生成高保真结果，再交付到 Inspire');
+    return toInspire(['pm-kakaxi-skills'], '先根据视觉输入生成高保真结果，再交付到 Inspire');
   }
   if (assets.some(asset => /(?:screen|screenshot|mockup|figma|设计稿|截图)/i.test(asset))) {
-    return toInspire(['pm-kakaxi'], '检测到界面截图或设计稿素材，先高保真生成再交付到 Inspire');
+    return toInspire(['pm-kakaxi-skills'], '检测到界面截图或设计稿素材，先高保真生成再交付到 Inspire');
   }
   if (/(完整用户旅程|多角色|复杂状态|产品方案|先梳理需求|需求理解)/i.test(normalized)) {
     return toInspire(['prd-generator'], '先完成复杂旅程和状态理解，再交付到 Inspire');

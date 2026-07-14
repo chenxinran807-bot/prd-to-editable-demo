@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "name": "【独立端】AI试穿",
+    "fileKey": "NpDitVIlL1oNuZ3gJMTgM2",
+    "nodeId": "71:4907",
+    "nodeName": "✅穿搭tab框架",
+    "selectedBy": "owner",
+    "inspectedAt": "2026-07-14"
+  },
+  "evidence": [
+    {
+      "rule": "375×812 independent-app frame with 44px status bar, 44px tabs and 83px bottom navigation",
+      "nodes": ["71:5029", "71:5061"]
+    },
+    {
+      "rule": "穿搭、直播、推荐 tabs with a 24×2 active indicator",
+      "nodes": ["71:5029", "71:5061"]
+    },
+    {
+      "rule": "367px two-column outfit feed with two 181px columns and a 5px gutter",
+      "nodes": ["71:5029"]
+    },
+    {
+      "rule": "Feed skeleton, network error and upward-load states",
+      "nodes": ["99:3330", "98:6420", "1431:8127"]
+    },
+    {
+      "rule": "Floating 试衣间 entry and card-level 试穿 action",
+      "nodes": ["71:5042", "71:5054"]
+    },
+    {
+      "rule": "Two attached products tilt in opposite directions; larger sets use a stacked fan",
+      "nodes": ["1457:8542", "1457:8690"]
+    }
+  ],
+  "packaging": {
+    "classification": "internal-private-design-reference",
+    "includeScreenshots": false,
+    "includeRuntimeBrandAssets": false,
+    "reason": "Use derived design rules only until export and redistribution rights are approved."
+  }
+}

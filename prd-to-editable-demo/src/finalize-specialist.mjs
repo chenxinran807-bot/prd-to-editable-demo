@@ -29,7 +29,9 @@ export async function finalizeSpecialistResult({ sourceDir, outDir, handoff }) {
   const specialist = handoff.routing?.selected ?? 'specialist';
   const manifestId = `${specialist}-${basename(source)}`.replace(/[^a-z0-9-]+/gi, '-').toLowerCase();
   const parity = JSON.parse(await readFile(new URL('../references/capability-parity.json', import.meta.url), 'utf8'));
-  const criteria = parity.specialists[specialist]?.mustPreserve ?? [];
+  const parityAliases = { 'pm-kakaxi': 'pm-kakaxi-skills' };
+  const paritySpecialist = parityAliases[specialist] ?? specialist;
+  const criteria = parity.specialists[paritySpecialist]?.mustPreserve ?? [];
   const evidence = new Map((handoff.specialistEvidence ?? []).map(item => [item.criterion, item.evidence]));
   const missing = criteria.length ? criteria.filter(criterion => typeof evidence.get(criterion) !== 'string' || !evidence.get(criterion).trim()) : ['unrecognized specialist baseline'];
   const status = 'review-required';

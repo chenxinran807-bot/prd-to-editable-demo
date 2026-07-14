@@ -8,11 +8,11 @@ test('professional rich PRDs end in Inspire while preserving understanding and v
   const route = selectRoute({ source });
   assert.equal(route.id, 'inspire');
   assert.equal(route.finalContainer, 'inspire');
-  assert.deepEqual(route.stages, ['prd-generator', 'pm-kakaxi', 'inspire']);
+  assert.deepEqual(route.stages, ['prd-generator', 'pm-kakaxi-skills', 'inspire']);
 });
 
 test('builds a reproducible first-generation Inspire plan', () => {
-  const route = { id: 'inspire', stages: ['prd-generator', 'pm-kakaxi', 'inspire'], finalContainer: 'inspire', reason: '复杂富媒体 PRD' };
+  const route = { id: 'inspire', stages: ['prd-generator', 'pm-kakaxi-skills', 'inspire'], finalContainer: 'inspire', reason: '复杂富媒体 PRD' };
   const requirements = {
     title: 'AI 试穿', actor: '商城用户', goal: '创建形象并试穿',
     businessObjects: ['形象', '照片'], userActions: ['上传', '试穿'], states: ['未创建', '试穿中']

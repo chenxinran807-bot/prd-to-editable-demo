@@ -2,10 +2,10 @@
 
 ## Version
 
-- Candidate source: `douyin-mall-independent-app-prototype-guidance@0.1.2`.
+- Candidate source: `douyin-mall-independent-app-prototype-guidance@0.1.3` (intended private platform v4).
 - Private platform version 1 was technically successful but rejected for visual/business quality.
 - Scope: private E2E only.
-- Public review: blocked pending official sources, approved assets and owner-accepted E2E.
+- Public review: blocked pending approved redistributable assets and owner-accepted v4 E2E.
 
 ## What This Skill Covers
 
@@ -20,7 +20,7 @@
 
 ## Maintenance Checklist
 
-- Update the source authority map when official design sources arrive.
+- Keep the source authority map and machine-readable Figma manifest aligned with owner-selected design sources.
 - Revalidate and regenerate attestation after every package change.
 - Run real private E2E and preserve diagnostics before workspace sharing.
 - Submit public review only after explicit owner acceptance.
@@ -45,3 +45,11 @@
 - Preview: `https://6a55a1c744ab2902115ef260-prototype.inspire.bytedance.net`.
 - Result: compile success, 2/2 captures, private v3 selected/activated/opened, no invented prices or policy claims.
 - Remaining gap: generic mobile-commerce appearance; official design source and approved assets are still required before owner acceptance.
+
+## Candidate v4
+
+- Direct design source: Figma `【独立端】AI试穿`, node `71:4907` (`✅穿搭tab框架`).
+- Added source-backed frame, tab, double-column feed, attached-product, `试穿`/`试衣间`, loading, error and upward-load rules.
+- Private source screenshots and brand imagery are not bundled; only derived rules and traceability metadata are retained.
+- E2E asset `6a55d82d627ead027eb0d39e` exactly selected/activated/opened v4 and rendered 8/8 states without compile/runtime errors.
+- Adversarial review accepted the source-backed structure but rejected final visual quality because neutral media and textual illustration/icon substitutes remain generic.
