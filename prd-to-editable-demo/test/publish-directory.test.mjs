@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as fs from 'node:fs/promises';
@@ -31,4 +31,20 @@ test('success replaces stale files and concurrent calls use separate candidates'
   await publishDirectory(out, dir => writeFile(join(dir, 'index.html'), 'fresh'));
   await assert.rejects(readFile(join(out, 'stale.txt'), 'utf8'));
   assert.equal(await readFile(join(out, 'index.html'), 'utf8'), 'fresh');
+});
+
+test('concurrent publication to the same output leaves one complete candidate and no swap debris', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'publish-race-')); const out = join(root, 'out');
+  let release; const gate = new Promise(resolve => { release = resolve; }); let ready = 0;
+  const publish = marker => publishDirectory(out, async dir => {
+    await writeFile(join(dir, 'index.html'), marker);
+    await writeFile(join(dir, 'manifest.json'), marker);
+    ready++; if (ready === 2) release(); await gate;
+  });
+  const results = await Promise.allSettled([publish('one'), publish('two')]);
+  assert.ok(results.some(result => result.status === 'fulfilled'));
+  const index = await readFile(join(out, 'index.html'), 'utf8');
+  assert.equal(await readFile(join(out, 'manifest.json'), 'utf8'), index);
+  assert.ok(['one', 'two'].includes(index));
+  assert.equal((await readdir(root)).some(name => /\.(?:candidate|backup)-/.test(name)), false);
 });

@@ -163,6 +163,15 @@ test('rejects dangerous output paths without touching inputs or the package', ()
   }
 });
 
+test('allows a safe output below multiple nonexistent parent directories', () => {
+  const root = mkdtempSync(join(tmpdir(), 'v2-nested-'));
+  const { prd, requirements } = writeV2Fixture(root);
+  const out = join(root, 'new-parent', 'new-child', 'output');
+  const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--intent', '快速评审初版，优先速度', '--out', out], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(readFileSync(join(out, 'index.html'), 'utf8').length > 0);
+});
+
 test('generates the complete editable demo deliverable', () => {
   const out = join(mkdtempSync(join(tmpdir(), 'editable-demo-')), 'output');
   const result = spawnSync(process.execPath, [

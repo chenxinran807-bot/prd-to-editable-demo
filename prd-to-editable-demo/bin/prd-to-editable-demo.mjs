@@ -42,8 +42,19 @@ export async function main(argv = process.argv.slice(2)) {
   const inputPaths = [options.prd, options.requirements, options.requirementsV2, options.confirmations, options.visualReferences]
     .filter(Boolean).map(path => realpathSync(resolve(path)));
   const requestedOutput = resolve(options.out);
-  let output;
-  try { output = realpathSync(requestedOutput); } catch { output = resolve(realpathSync(dirname(requestedOutput)), basename(requestedOutput)); }
+  const canonicalizePotentialPath = path => {
+    const unresolved = [];
+    let cursor = path;
+    while (true) {
+      try { return resolve(realpathSync(cursor), ...unresolved.reverse()); } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+        const parent = dirname(cursor);
+        if (parent === cursor) throw error;
+        unresolved.push(basename(cursor)); cursor = parent;
+      }
+    }
+  };
+  const output = canonicalizePotentialPath(requestedOutput);
   const packageRoot = realpathSync(process.cwd());
   const isAncestor = (ancestor, child) => { const value = relative(ancestor, child); return value === '' || (!value.startsWith('..') && !value.startsWith('/')); };
   if (output === parse(output).root || isAncestor(output, packageRoot) || inputPaths.some(input => isAncestor(output, input))) {
