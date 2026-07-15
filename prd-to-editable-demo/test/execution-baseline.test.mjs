@@ -80,6 +80,15 @@ test('rejects duplicate or empty graph entity IDs with entity diagnostics', () =
   assert.throws(() => compileExecutionBaseline(fixture(), duplicateVisuals), /duplicate visual reference id visual-1/i);
 });
 
+test('rejects ambiguous IDs shared by a page and region', () => {
+  const ir = fixture();
+  ir.pages[1].id = 'region-first';
+  ir.regions[2].pageId = 'region-first';
+  ir.actions[0].toPageId = 'region-first';
+  ir.coreJourneys[0].expectedEndPageId = 'region-first';
+  assert.throws(() => compileExecutionBaseline(ir, visuals), /page and region share ambiguous id region-first/i);
+});
+
 test('rejects orphan regions and invalid action graph references', () => {
   const orphan = fixture();
   orphan.regions.push({ id: 'region-orphan', pageId: 'page-a', name: 'Orphan' });

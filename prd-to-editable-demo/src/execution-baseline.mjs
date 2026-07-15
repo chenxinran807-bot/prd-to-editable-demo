@@ -43,6 +43,9 @@ export function compileExecutionBaseline(ir, visualReferences, previous = null, 
   const coreJourneys = ir.coreJourneys ?? [];
   const pageById = indexUnique(pages, 'page');
   const regionById = indexUnique(regions, 'region');
+  for (const id of pageById.keys()) {
+    if (regionById.has(id)) throw new Error(`Execution baseline page and region share ambiguous id ${id}`);
+  }
   const requirementById = indexUnique(requirements, 'requirement');
   const actionById = indexUnique(actions, 'action');
   indexUnique(coreJourneys, 'coreJourney');
