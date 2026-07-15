@@ -2,6 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "visual-reference-manifest.schema.json",
   "title": "Visual Reference Manifest",
+  "description": "Structural validation for a visual reference manifest. Passing this schema is only the first validation stage.",
+  "$comment": "validateVisualReferences is mandatory after JSON Schema validation. It enforces semantic invariants that JSON Schema does not claim to enforce here: unique reference IDs, unique binding.property values regardless of fidelity, bound/excluded conflicts, context ownership, and overlapping exact scopes.",
   "type": "array",
   "items": {
     "type": "object",
@@ -11,6 +13,7 @@
       "id": { "type": "string", "pattern": ".*\\S.*" },
       "asset": { "type": "string", "pattern": ".*\\S.*" },
       "scope": {
+        "description": "Structural scope coordinates. Page/region ownership and exact-scope overlap are enforced by the runtime validator.",
         "type": "object",
         "additionalProperties": false,
         "required": ["pageId"],
@@ -19,8 +22,14 @@
           "regionId": { "type": "string", "pattern": ".*\\S.*" }
         }
       },
-      "bindings": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/binding" } },
-      "exclude": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/property" } },
+      "bindings": {
+        "description": "Structural binding list. uniqueItems rejects identical objects; binding.property uniqueness across different fidelity values is enforced by the runtime validator.",
+        "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/binding" }
+      },
+      "exclude": {
+        "description": "Structurally unique exclusions. Conflicts between exclusions and bindings are enforced by the runtime validator.",
+        "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/property" }
+      },
       "evidenceRegions": { "type": "array", "items": { "$ref": "#/$defs/evidenceRegion" } }
     }
   },

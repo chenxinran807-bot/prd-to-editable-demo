@@ -186,7 +186,7 @@ test('visual reference manifest schema loads as valid JSON with strict enums and
   assert.equal(schema.items.properties.exclude.uniqueItems, true);
 });
 
-test('schema behavior accepts a valid manifest and rejects representative invalid instances', () => {
+test('schema structure accepts a valid manifest and rejects representative structural errors', () => {
   const schema = JSON.parse(readFileSync(new URL('../schemas/visual-reference-manifest.schema.json', import.meta.url), 'utf8'));
   const valid = [reference('one')];
   valid[0].evidenceRegions = [{ label: 'Header', purpose: 'Alignment evidence', boundingBox: [0, 0, 100, 80] }];
@@ -204,4 +204,30 @@ test('schema behavior accepts a valid manifest and rejects representative invali
   const duplicateBindings = [reference('bindings')]; duplicateBindings[0].bindings.push(binding('layout')); invalid.push(duplicateBindings);
   const duplicateExclusions = [reference('exclude')]; duplicateExclusions[0].exclude = ['color', 'color']; invalid.push(duplicateExclusions);
   for (const instance of invalid) assert.notDeepEqual(validateWithSchema(schema, instance), [], JSON.stringify(instance));
+});
+
+test('schema documents the mandatory semantic validation stage', () => {
+  const schema = JSON.parse(readFileSync(new URL('../schemas/visual-reference-manifest.schema.json', import.meta.url), 'utf8'));
+  assert.match(schema.description, /structur/i);
+  assert.match(schema.$comment, /validateVisualReferences.*mandatory/i);
+  assert.match(schema.items.properties.bindings.description, /binding\.property.*runtime/i);
+  assert.match(schema.items.properties.scope.description, /overlap.*runtime/i);
+});
+
+test('canonical runtime rejects semantic conflicts that remain structurally schema-valid', () => {
+  const schema = JSON.parse(readFileSync(new URL('../schemas/visual-reference-manifest.schema.json', import.meta.url), 'utf8'));
+  const duplicateProperty = [reference('one')];
+  duplicateProperty[0].bindings.push(binding('layout', 'high'));
+  const duplicateIds = [reference('same', 'layout', 'high'), reference('same', 'color', 'local', { pageId: 'page-2' })];
+  const boundAndExcluded = [reference('excluded', 'imagery', 'local')];
+  boundAndExcluded[0].exclude = ['imagery'];
+
+  for (const [instance, runtimeError] of [
+    [duplicateProperty, /duplicate binding property/i],
+    [duplicateIds, /duplicate reference id/i],
+    [boundAndExcluded, /both bound and excluded/i],
+  ]) {
+    assert.deepEqual(validateWithSchema(schema, instance), [], 'case must pass structural schema validation');
+    assert.throws(() => validateVisualReferences(instance), runtimeError);
+  }
 });
