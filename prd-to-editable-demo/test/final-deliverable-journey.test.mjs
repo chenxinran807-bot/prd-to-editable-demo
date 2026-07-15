@@ -37,12 +37,14 @@ function fakeBrowserFactory(state = {}, source = html()) {
           if (source.includes('fail-favicon')) emit('requestfailed', { url: () => 'http://local.test/favicon.ico', failure: () => ({ errorText: 'missing' }) });
         },
         locator(selector) {
+          if (selector === '#interaction-status') return { count: async () => state.feedback === undefined ? 0 : 1, isVisible: async () => state.feedback !== undefined, textContent: async () => state.feedback ?? '', getAttribute: async name => name === 'data-last-action' ? state.lastAction ?? null : null };
+          if (selector.includes('.status-chip')) return { count: async () => state.chipState === undefined ? 0 : 1, textContent: async () => state.chipState ?? '', getAttribute: async name => name === 'data-state-change' ? state.chipMarker ?? null : null };
           const decode = value => value?.replace(/\\([0-9a-f]+) /gi, (_, hex) => String.fromCodePoint(Number.parseInt(hex, 16)));
           const pageMatch = selector.match(/data-page-id="((?:\\.|[^"])*)"/);
           const actionMatch = selector.match(/data-action-id="((?:\\.|[^"])*)"/);
           const pageId = decode(pageMatch?.[1]); const actionId = decode(actionMatch?.[1]);
           const matches = () => {
-            if (!actionMatch) return pages.filter(page => page.id === pageId && (!selector.includes(':not([hidden])') || page.visible));
+            if (!actionMatch) return pages.filter(page => page.id === pageId && (!selector.includes(':not([hidden])') || page.visible)).map(page => ({ ...page, attrs: page.stateChange ? `data-state-change="${page.stateChange}"` : '' }));
             const page = pages.find(item => item.id === (pageId || current) && item.visible);
             if (!page) return [];
             if (page.controls) return page.controls.filter(control => control.id === actionId).map(control => ({ attrs: control.attrs || '', target: control.target }));
@@ -56,6 +58,9 @@ function fakeBrowserFactory(state = {}, source = html()) {
             getAttribute: async name => matches()[0]?.attrs.match(new RegExp(`${name}="([^"]*)"`))?.[1] ?? null,
             click: async () => {
               const item = matches()[0]; if (item?.target) { pages.forEach(page => page.visible = page.id === item.target); current = item.target; }
+              const feedback = item?.attrs?.match(/data-visible-feedback="([^"]+)"/)?.[1]; const change = item?.attrs?.match(/data-state-change="([^"]+)"/)?.[1]; const id = item?.attrs?.match(/data-action-id="([^"]+)"/)?.[1];
+              if (feedback && !state.noFeedback) { state.feedback = state.wrongFeedback ?? feedback; state.lastAction = state.wrongLastAction ?? id; }
+              if (change && !state.noState) { const page = pages.find(page => page.id === item.target); if (page) page.stateChange = state.wrongState ?? change; state.chipState = state.wrongState ?? change; state.chipMarker = state.wrongState ?? change; }
               if (state.delayedFailure) {
                 if (state.delayedFailure === 'request') emit('request', {});
                 setTimeout(() => {
@@ -95,6 +100,13 @@ test('passes a complete local core journey including a return action without pub
   assert.equal(state.pageClosed, true);
   assert.equal(state.serverClosed, true);
   assert.deepEqual(result.checks, ['round-trip:start:start', 'round-trip:next:done', 'round-trip:back:start']);
+});
+
+test('verifies visible feedback, last action, and target state outcomes after click', async () => {
+  const outcomeBaseline = { actions: [{ id: 'next', fromPageId: 'start', toPageId: 'done', trigger: 'click', visibleFeedback: 'Saved', stateChange: 'complete' }], coreJourneys: [{ id: 'outcome', startPageId: 'start', actionIds: ['next'], expectedEndPageId: 'done' }] };
+  const markup = html({ next: 'data-trigger="click" data-visible-feedback="Saved" data-state-change="complete"' });
+  assert.equal((await fixtureRun(markup, { baseline: outcomeBaseline })).status, 'passed');
+  for (const [state, pattern] of [[{ noFeedback: true }, /feedback/i], [{ wrongFeedback: 'Wrong' }, /feedback/i], [{ wrongLastAction: 'other' }, /last action/i], [{ noState: true }, /state change/i], [{ wrongState: 'wrong' }, /state change/i]]) await assert.rejects(() => fixtureRun(markup, { baseline: outcomeBaseline, state }), pattern);
 });
 
 for (const [name, transform, pattern] of [

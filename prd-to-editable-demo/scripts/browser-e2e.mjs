@@ -167,6 +167,15 @@ export async function verifyFinalDeliverableJourneys({ outputDir, url, baseline,
         if (runtimeFailures.length) throw deliveryError(journey.id, actionId, currentPageId, runtimeFailures.join('; '));
         const target = page.locator(`[data-page-id="${cssString(action.toPageId)}"]:not([hidden])`);
         if (await target.count() !== 1 || !await target.isVisible()) throw deliveryError(journey.id, actionId, action.toPageId, 'expected target page is not uniquely visible');
+        if (action.visibleFeedback !== undefined) {
+          const feedback = page.locator('#interaction-status');
+          if (await feedback.count() !== 1 || !await feedback.isVisible()) throw deliveryError(journey.id, actionId, action.toPageId, 'interaction feedback is not visible');
+          if ((await feedback.textContent()).trim() !== action.visibleFeedback.trim()) throw deliveryError(journey.id, actionId, action.toPageId, 'visible feedback does not match baseline');
+          if (await feedback.getAttribute('data-last-action') !== action.id) throw deliveryError(journey.id, actionId, action.toPageId, 'last action marker does not match');
+          if (await target.getAttribute('data-state-change') !== action.stateChange) throw deliveryError(journey.id, actionId, action.toPageId, 'target page state change does not match');
+          const chip = page.locator(`[data-page-id="${cssString(action.toPageId)}"]:not([hidden]) .status-chip`);
+          if (await chip.count() !== 1 || (await chip.textContent()).trim() !== action.stateChange.trim() || await chip.getAttribute('data-state-change') !== action.stateChange) throw deliveryError(journey.id, actionId, action.toPageId, 'status chip state change does not match');
+        }
         await quiesce();
         if (runtimeFailures.length) throw deliveryError(journey.id, actionId, action.toPageId, runtimeFailures.join('; '));
         if (await target.count() !== 1 || !await target.isVisible()) throw deliveryError(journey.id, actionId, action.toPageId, 'expected target page did not remain uniquely visible');
