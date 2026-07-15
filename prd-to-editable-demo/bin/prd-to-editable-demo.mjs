@@ -92,6 +92,7 @@ export async function main(argv = process.argv.slice(2)) {
     if (visualConflicts.length) {
       const questions = visualConflicts.slice(0, 3).map((conflict, index) => ({
         id: `visual-conflict-${index + 1}`, theme: 'visual-reference-conflict', priority: 'P0',
+        question: `Which reference should control exact ${conflict.property} on page ${conflict.pageId}${conflict.regionId ? `, region ${conflict.regionId}` : ''}?`,
         impact: `Two exact references control ${conflict.property} in the same visible scope`,
         recommendation: 'choose one exact source or lower fidelity',
         options: conflict.referenceIds.map(id => `Keep ${id} exact`), conflict,

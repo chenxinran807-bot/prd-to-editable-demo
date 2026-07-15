@@ -120,6 +120,8 @@ test('v2 exact visual conflicts produce bounded clarification instead of a broke
   assert.equal(artifact.turn.theme, 'visual-reference-conflict');
   assert.ok(artifact.turn.questions.length <= 3);
   assert.match(artifact.turn.questions[0].recommendation, /choose one exact source or lower fidelity/i);
+  assert.match(artifact.turn.questions[0].question, /layout.*page main/i);
+  assert.ok(artifact.turn.questions[0].question.length <= 160);
   assert.deepEqual(artifact.turn.questions[0].options, ['Keep one exact', 'Keep two exact']);
 });
 
