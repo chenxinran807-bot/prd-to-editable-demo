@@ -86,9 +86,12 @@ export function verifyFidelity({ baseline, model }) {
     for (const sourceId of element.sourceIds ?? []) {
       if (protectedSourceIds.has(sourceId)) fail(`protected source ${sourceId} was rendered`);
     }
-    const visible = normalizedText(element.text);
+  }
+  for (const page of model.pages ?? []) {
+    const visible = normalizedText([page.title, ...(page.elements ?? []).map(element => element.text)]
+      .filter(value => typeof value === 'string').join(' '));
     const leaked = protectedTexts.find(item => visible.includes(item.text));
-    if (leaked) fail(`protected ${leaked.kind} was rendered`);
+    if (leaked) fail(`protected ${leaked.kind} was rendered on page ${page.id}`);
   }
   const validateTraceKeys = (kind, id, rendered) => {
     for (const { element } of rendered) {

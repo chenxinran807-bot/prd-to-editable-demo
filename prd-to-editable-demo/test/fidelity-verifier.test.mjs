@@ -170,6 +170,23 @@ test('rejects complete protected statements and source quotes without metadata b
   assert.doesNotThrow(() => verifyFidelity(common));
 });
 
+test('scans page titles and ordered page text for split protected content', () => {
+  const titleLeak = fixture(); titleLeak.model.pages[0].title = 'Internal market research must never appear in the customer interface';
+  assert.throws(() => verifyFidelity(titleLeak), /protected statement.*rendered/i);
+
+  const splitLeak = fixture();
+  splitLeak.model.pages[1].elements.push(
+    { key: 'split-1', text: 'Confidential competitor evidence belongs' },
+    { key: 'split-2', text: 'only in internal planning' },
+  );
+  assert.throws(() => verifyFidelity(splitLeak), /protected source quote.*rendered/i);
+
+  const clean = fixture();
+  clean.model.pages[1].title = 'Internal market research overview';
+  clean.model.pages[1].elements.push({ key: 'near-match', text: 'Competitor evidence supports planning choices' });
+  assert.doesNotThrow(() => verifyFidelity(clean));
+});
+
 test('allows a source ID shared with a UI-eligible requirement', () => {
   const data = fixture();
   data.baseline.pages[0].requirements[1].sourceIds = ['source-background'];
