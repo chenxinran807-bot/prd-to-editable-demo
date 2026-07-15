@@ -12,7 +12,9 @@ test('returns null for an empty clarification queue', () => {
 
 test('shows at most three questions from only the highest-ranked theme', () => {
   const blockers = [
-    blocker('a', 'scope', 'P1', 'r1', { options: ['One'], impact: 'Changes scope', source: { sourceIds: ['s1'] } }),
+    blocker('a', 'scope', 'P1', 'r1', {
+      options: ['One'], impact: 'Changes scope', source: { sourceIds: ['s1'] }, evidence: [{ quote: 'PRD quote' }],
+    }),
     blocker('b', 'flow', 'P0'), blocker('c', 'scope', 'P1'), blocker('d', 'scope', 'P1'),
     blocker('e', 'scope', 'P1'),
   ];
@@ -25,6 +27,7 @@ test('shows at most three questions from only the highest-ranked theme', () => {
   assert.equal(turn.theme, 'scope');
   assert.deepEqual(turn.questions.map(({ id }) => id), ['a', 'c', 'd']);
   assert.deepEqual(turn.questions[0].source, { sourceIds: ['s1'] });
+  assert.deepEqual(turn.questions[0].evidence, [{ quote: 'PRD quote' }]);
   assert.equal(turn.questions[0].impact, 'Changes scope');
   assert.ok(!('unrelated' in turn));
 });
@@ -40,8 +43,13 @@ test('orders by priority while preserving source order within a priority', () =>
 test('rejects invalid and duplicate blockers', () => {
   for (const bad of [
     [blocker('', 'scope', 'P0')], [blocker('a', '', 'P0')], [blocker('a', 'scope', 'urgent')],
+    [blocker('a', 'scope', 'P0', '')], [blocker('a', 'scope', 'P0', '   ')],
     [blocker('a', 'scope', 'P0', 'r', { question: '' })],
     [blocker('a', 'scope', 'P0', 'r', { options: 'yes' })],
+    [blocker('a', 'scope', 'P0', 'r', { options: [] })],
+    [blocker('a', 'scope', 'P0', 'r', { options: ['yes', ''] })],
+    [blocker('a', 'scope', 'P0', 'r', { options: ['yes', 2] })],
+    [blocker('a', 'scope', 'P0', 'r', { options: ['yes', 'yes'] })],
   ]) assert.throws(() => buildClarificationTurn(bad), TypeError);
   assert.throws(() => buildClarificationTurn([blocker('a', 'x', 'P0'), blocker('a', 'y', 'P1')]), /duplicate/i);
 });
@@ -81,6 +89,19 @@ test('validates malformed, duplicate, and unknown answers', () => {
     { blockerId: 'a', answer: 'x', answeredAt: 'now' },
     { blockerId: 'a', answer: 'y', answeredAt: 'later' },
   ]), /duplicate/i);
+});
+
+test('validates malformed and duplicate IR blockers before applying answers', () => {
+  const requirements = [{ id: 'r1' }];
+  assert.throws(() => applyClarifications({ requirements, blockers: [blocker('a', 'scope', 'P0', '')] }, []), TypeError);
+  assert.throws(() => applyClarifications({ requirements, blockers: [
+    blocker('a', 'scope', 'P0', 'r1'), blocker('a', 'flow', 'P1', 'r1'),
+  ] }, []), /duplicate/i);
+});
+
+test('rejects an answered blocker that does not map to a requirement', () => {
+  const ir = { requirements: [{ id: 'r1' }], blockers: [blocker('a', 'scope', 'P0', 'missing')] };
+  assert.throws(() => applyClarifications(ir, [{ blockerId: 'a', answer: 'A', answeredAt: 't1' }]), /requirement/i);
 });
 
 test('does not confirm a requirement until every linked blocker is resolved', () => {

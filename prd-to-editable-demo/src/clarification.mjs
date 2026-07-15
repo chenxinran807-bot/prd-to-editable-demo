@@ -17,9 +17,18 @@ function validateBlockers(blockers) {
   const ids = new Set();
   blockers.forEach((blocker, index) => {
     if (!blocker || typeof blocker !== 'object' || Array.isArray(blocker)) fail(`blockers[${index}] must be an object`);
-    for (const field of ['id', 'theme', 'priority', 'question']) nonEmptyString(blocker[field], `blockers[${index}].${field}`);
+    for (const field of ['id', 'theme', 'priority', 'requirementId', 'question']) nonEmptyString(blocker[field], `blockers[${index}].${field}`);
     if (!PRIORITY_RANK.has(blocker.priority)) fail(`blockers[${index}].priority must be P0, P1, or P2`);
-    if (blocker.options !== undefined && !Array.isArray(blocker.options)) fail(`blockers[${index}].options must be an array`);
+    if (blocker.options !== undefined) {
+      if (!Array.isArray(blocker.options) || blocker.options.length === 0) fail(`blockers[${index}].options must be a non-empty array`);
+      const options = new Set();
+      blocker.options.forEach((option, optionIndex) => {
+        nonEmptyString(option, `blockers[${index}].options[${optionIndex}]`);
+        const normalized = option.trim();
+        if (options.has(normalized)) fail(`blockers[${index}].options contains duplicate option ${normalized}`);
+        options.add(normalized);
+      });
+    }
     if (ids.has(blocker.id)) fail(`duplicate blocker id ${blocker.id}`);
     ids.add(blocker.id);
   });
@@ -64,11 +73,17 @@ export function applyClarifications(ir, answers) {
   if (!Array.isArray(ir.blockers)) fail('ir.blockers must be an array');
   if (!Array.isArray(ir.requirements)) fail('ir.requirements must be an array');
 
+  validateBlockers(ir.blockers);
   const blockerIds = new Set(ir.blockers.map(({ id }) => id));
   validateAnswers(answers, blockerIds);
+  const requirementIds = new Set(ir.requirements.map(({ id }) => id));
+  const blockerById = new Map(ir.blockers.map((blocker) => [blocker.id, blocker]));
+  for (const { blockerId } of answers) {
+    const requirementId = blockerById.get(blockerId).requirementId;
+    if (!requirementIds.has(requirementId)) fail(`blocker ${blockerId} references unknown requirement ${requirementId}`);
+  }
   const result = structuredClone(ir);
   const answeredIds = new Set(answers.map(({ blockerId }) => blockerId));
-  const blockerById = new Map(ir.blockers.map((blocker) => [blocker.id, blocker]));
   result.blockers = result.blockers.filter(({ id }) => !answeredIds.has(id));
 
   for (const answer of answers) {
