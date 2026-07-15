@@ -1,0 +1,104 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { validateRequirementsIrV2 } from '../src/requirements-ir-v2.mjs';
+
+const source = `# Product brief
+
+People can save an item from the detail view.
+
+Market interviews indicate that speed matters.
+
+The save control must remain visible.`;
+
+function validIr() {
+  return {
+    schemaVersion: 2,
+    sourceUnits: [
+      { id: 's1', purpose: 'product_requirement', certainty: 'explicit', quote: 'People can save an item from the detail view.' },
+      { id: 's2', purpose: 'research_evidence', certainty: 'confirmed', quote: 'Market interviews indicate that speed matters.' },
+      { id: 's3', purpose: 'design_constraint', certainty: 'explicit', quote: 'The save control must remain visible.' },
+    ],
+    sourceCoverage: [
+      { quote: 'People can save an item from the detail view.', sourceIds: ['s1'] },
+      { quote: 'Market interviews indicate that speed matters.', sourceIds: ['s2'] },
+      { quote: 'The save control must remain visible.', sourceIds: ['s3'] },
+    ],
+    requirements: [
+      { id: 'r1', text: 'Save an item', sourceIds: ['s1', 's3'], uiEligible: true, taxonomyIds: ['t-child'] },
+      { id: 'r2', text: 'Speed is important', sourceIds: ['s2'], uiEligible: false, taxonomyIds: ['t-root'] },
+    ],
+    taxonomy: [
+      { id: 't-root', label: 'Collection', parentId: null },
+      { id: 't-child', label: 'Saving', parentId: 't-root' },
+    ],
+    pages: [{ id: 'p1', name: 'Detail', regionIds: ['reg1'] }],
+    regions: [{ id: 'reg1', pageId: 'p1', name: 'Primary' }],
+    actions: [{ id: 'a1', name: 'Save', fromPageId: 'p1', toPageId: 'p1', regionId: 'reg1', requirementIds: ['r1'] }],
+    coreJourneys: [{ id: 'j1', name: 'Save flow', actionIds: ['a1'], startPageId: 'p1', expectedEndPageId: 'p1' }],
+    blockers: [{ id: 'b1', text: 'Persistence behavior is unspecified', certainty: 'missing', sourceIds: [] }],
+  };
+}
+
+test('accepts and deep-copies a valid typed v2 IR while preserving hierarchy', () => {
+  const input = validIr();
+  const before = structuredClone(input);
+  const result = validateRequirementsIrV2(input, source);
+  assert.deepEqual(result, before);
+  assert.notStrictEqual(result, input);
+  assert.notStrictEqual(result.taxonomy[0], input.taxonomy[0]);
+  assert.equal(result.taxonomy[1].parentId, 't-root');
+  assert.deepEqual(input, before);
+});
+
+test('rejects an unmapped meaningful Markdown block but ignores headings', () => {
+  const input = validIr();
+  input.sourceCoverage.splice(1, 1);
+  assert.throws(() => validateRequirementsIrV2(input, source), /unmapped meaningful source block/i);
+});
+
+test('rejects a coverage mapping whose source evidence is outside the block', () => {
+  const input = validIr();
+  input.sourceCoverage[0].sourceIds = ['s2'];
+  assert.throws(() => validateRequirementsIrV2(input, source), /does not occur in its covered block/i);
+});
+
+test('rejects background or research evidence marked UI eligible', () => {
+  const input = validIr();
+  input.requirements[1].uiEligible = true;
+  assert.throws(() => validateRequirementsIrV2(input, source), /product_requirement source/i);
+});
+
+test('rejects a source quote that is absent from the PRD', () => {
+  const input = validIr();
+  input.sourceUnits[0].quote = 'Not in the source';
+  assert.throws(() => validateRequirementsIrV2(input, source), /exact substring/i);
+});
+
+test('rejects an unknown or cyclic taxonomy parent', () => {
+  const unknown = validIr();
+  unknown.taxonomy[1].parentId = 'nope';
+  assert.throws(() => validateRequirementsIrV2(unknown, source), /unknown parent/i);
+  const cyclic = validIr();
+  cyclic.taxonomy[0].parentId = 't-child';
+  assert.throws(() => validateRequirementsIrV2(cyclic, source), /cycle/i);
+});
+
+test('rejects invalid action and journey references and endpoint mismatch', () => {
+  const action = validIr();
+  action.actions[0].toPageId = 'missing';
+  assert.throws(() => validateRequirementsIrV2(action, source), /unknown page/i);
+  const journey = validIr();
+  journey.coreJourneys[0].actionIds = ['missing'];
+  assert.throws(() => validateRequirementsIrV2(journey, source), /unknown action/i);
+  const endpoint = validIr();
+  endpoint.pages.push({ id: 'p2', name: 'Confirmation', regionIds: [] });
+  endpoint.coreJourneys[0].expectedEndPageId = 'p2';
+  assert.throws(() => validateRequirementsIrV2(endpoint, source), /expected endpoint/i);
+});
+
+test('rejects duplicate IDs, including region IDs', () => {
+  const input = validIr();
+  input.regions.push({ ...input.regions[0] });
+  assert.throws(() => validateRequirementsIrV2(input, source), /duplicate region id/i);
+});

@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "requirements-ir-v2.schema.json",
+  "title": "Lossless Requirements IR v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "sourceUnits", "sourceCoverage", "requirements", "taxonomy", "pages", "regions", "actions", "coreJourneys", "blockers"],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "sourceUnits": { "type": "array", "items": { "$ref": "#/$defs/sourceUnit" } },
+    "sourceCoverage": { "type": "array", "items": { "$ref": "#/$defs/sourceCoverage" } },
+    "requirements": { "type": "array", "items": { "$ref": "#/$defs/requirement" } },
+    "taxonomy": { "type": "array", "items": { "$ref": "#/$defs/taxonomyNode" } },
+    "pages": { "type": "array", "items": { "$ref": "#/$defs/page" } },
+    "regions": { "type": "array", "items": { "$ref": "#/$defs/region" } },
+    "actions": { "type": "array", "items": { "$ref": "#/$defs/action" } },
+    "coreJourneys": { "type": "array", "items": { "$ref": "#/$defs/coreJourney" } },
+    "blockers": { "type": "array", "items": { "$ref": "#/$defs/blocker" } }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1 },
+    "idArray": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+    "certainty": { "enum": ["explicit", "derived", "confirmed", "assumed", "missing", "conflicting"] },
+    "sourceUnit": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "purpose", "certainty", "quote"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "purpose": { "enum": ["product_requirement", "acceptance_criterion", "design_constraint", "business_context", "research_evidence", "delivery_metadata"] },
+        "certainty": { "$ref": "#/$defs/certainty" },
+        "quote": { "type": "string", "minLength": 1 }
+      }
+    },
+    "sourceCoverage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["quote", "sourceIds"],
+      "properties": {
+        "quote": { "type": "string", "minLength": 1 },
+        "sourceIds": { "$ref": "#/$defs/idArray", "minItems": 1 }
+      }
+    },
+    "requirement": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "text", "sourceIds", "uiEligible", "taxonomyIds"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "text": { "type": "string", "minLength": 1 },
+        "sourceIds": { "$ref": "#/$defs/idArray" }, "uiEligible": { "type": "boolean" },
+        "taxonomyIds": { "$ref": "#/$defs/idArray" }
+      }
+    },
+    "taxonomyNode": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "label", "parentId"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "label": { "type": "string", "minLength": 1 }, "parentId": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] } }
+    },
+    "page": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "name", "regionIds"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1 }, "regionIds": { "$ref": "#/$defs/idArray" } }
+    },
+    "region": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "pageId", "name"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "pageId": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1 } }
+    },
+    "action": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "name", "fromPageId", "toPageId", "regionId", "requirementIds"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1 },
+        "fromPageId": { "$ref": "#/$defs/id" }, "toPageId": { "$ref": "#/$defs/id" },
+        "regionId": { "$ref": "#/$defs/id" }, "requirementIds": { "$ref": "#/$defs/idArray" }
+      }
+    },
+    "coreJourney": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "name", "actionIds", "startPageId", "expectedEndPageId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1 },
+        "actionIds": { "$ref": "#/$defs/idArray", "minItems": 1 },
+        "startPageId": { "$ref": "#/$defs/id" }, "expectedEndPageId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "blocker": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "text", "certainty", "sourceIds"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "text": { "type": "string", "minLength": 1 },
+        "certainty": { "$ref": "#/$defs/certainty" }, "sourceIds": { "$ref": "#/$defs/idArray" }
+      }
+    }
+  }
+}
