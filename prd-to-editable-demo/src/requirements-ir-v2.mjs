@@ -23,6 +23,7 @@ function structured(value, allowed, name, validators) {
   object(value, name); keys(value, allowed, name);
   for (const [field, validate] of Object.entries(validators)) if (value[field] !== undefined) validate(value[field], `${name}.${field}`);
 }
+function enumeration(values) { return (value, name) => { string(value, name); if (!values.includes(value)) fail(`${name} must be one of ${values.join(', ')}`); }; }
 function keys(value, allowed, name) {
   for (const key of Object.keys(value)) if (!allowed.includes(key)) fail(`${name} has unknown property ${key}`);
 }
@@ -137,10 +138,10 @@ export function validateRequirementsIrV2(input, source) {
   for (const region of input.regions) {
     keys(region, ['id', 'pageId', 'name', 'layout', 'position', 'behavior', 'prominence'], `region ${region.id}`);
     string(region.name, `region ${region.id} name`); string(region.pageId, `region ${region.id} pageId`);
-    structured(region.layout, ['mode', 'alignment'], `region ${region.id} layout`, { mode: string, alignment: string });
+    structured(region.layout, ['mode', 'alignment'], `region ${region.id} layout`, { mode: enumeration(['stack','grid','horizontal','split']), alignment: enumeration(['start','center','end','stretch']) });
     structured(region.position, ['order', 'anchor'], `region ${region.id} position`, { order: integer, anchor: string });
-    structured(region.behavior, ['scroll', 'sticky'], `region ${region.id} behavior`, { scroll: string, sticky: boolean });
-    structured(region.prominence, ['level', 'rationale'], `region ${region.id} prominence`, { level: string, rationale: string });
+    structured(region.behavior, ['scroll', 'sticky'], `region ${region.id} behavior`, { scroll: enumeration(['page','region','none']), sticky: boolean });
+    structured(region.prominence, ['level', 'rationale'], `region ${region.id} prominence`, { level: enumeration(['primary','secondary','quiet']), rationale: string });
     if (!pageIds.has(region.pageId)) fail(`region ${region.id} references unknown page ${region.pageId}`);
     const page = input.pages.find(({ id }) => id === region.pageId);
     if (!page.regionIds.includes(region.id)) fail(`region ${region.id} is not listed by page ${region.pageId}`);
@@ -154,6 +155,7 @@ export function validateRequirementsIrV2(input, source) {
     keys(action, ['id', 'name', 'trigger', 'visibleFeedback', 'stateChange', 'fromPageId', 'toPageId', 'regionId', 'requirementIds'], `action ${action.id}`);
     string(action.name, `action ${action.id} name`);
     string(action.trigger, `action ${action.id} trigger`);
+    if (!['tap', 'click'].includes(action.trigger)) fail(`action ${action.id} trigger must be tap or click`);
     string(action.visibleFeedback, `action ${action.id} visibleFeedback`);
     string(action.stateChange, `action ${action.id} stateChange`);
     for (const field of ['fromPageId', 'toPageId']) {

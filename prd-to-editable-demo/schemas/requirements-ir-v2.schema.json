@@ -80,7 +80,7 @@
       "required": ["id", "name", "trigger", "visibleFeedback", "stateChange", "fromPageId", "toPageId", "regionId", "requirementIds"],
       "properties": {
         "id": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
-        "trigger": { "$ref": "#/$defs/nonBlank" }, "visibleFeedback": { "$ref": "#/$defs/nonBlank" }, "stateChange": { "$ref": "#/$defs/nonBlank" },
+        "trigger": { "enum": ["tap", "click"] }, "visibleFeedback": { "$ref": "#/$defs/nonBlank" }, "stateChange": { "$ref": "#/$defs/nonBlank" },
         "fromPageId": { "$ref": "#/$defs/id" }, "toPageId": { "$ref": "#/$defs/id" },
         "regionId": { "$ref": "#/$defs/id" }, "requirementIds": { "$ref": "#/$defs/idArray" }
       }

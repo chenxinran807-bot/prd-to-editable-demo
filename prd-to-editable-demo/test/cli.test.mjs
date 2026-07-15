@@ -40,7 +40,7 @@ function writeV2Fixture(root, { blockers = [], background = true } = {}) {
     ], taxonomy: [],
     pages: [{ id: 'main', name: 'Request', regionIds: ['primary'] }],
     regions: [{ id: 'primary', pageId: 'main', name: 'Primary' }],
-    actions: [{ id: 'submit', name: 'Submit', trigger: 'activate submit', visibleFeedback: 'submitted state appears', stateChange: 'request becomes submitted', fromPageId: 'main', toPageId: 'main', regionId: 'primary', requirementIds: ['r1'] }],
+    actions: [{ id: 'submit', name: 'Submit', trigger: 'click', visibleFeedback: 'submitted state appears', stateChange: 'request becomes submitted', fromPageId: 'main', toPageId: 'main', regionId: 'primary', requirementIds: ['r1'] }],
     coreJourneys: [{ id: 'journey', name: 'Submit', actionIds: ['submit'], startPageId: 'main', expectedEndPageId: 'main' }],
     blockers
   }));
@@ -108,6 +108,7 @@ test('v2 professional handoff carries the frozen baseline and visual contracts',
   const root = mkdtempSync(join(tmpdir(), 'v2-handoff-'));
   const { prd, requirements } = writeV2Fixture(root);
   const visuals = join(root, 'visuals.json');
+  writeFileSync(join(root, 'screen.png'), 'image');
   writeFileSync(visuals, JSON.stringify([{ id: 'ref-1', asset: 'screen.png', scope: { pageId: 'main', regionId: 'primary' }, bindings: [{ property: 'layout', fidelity: 'high' }], exclude: [] }]));
   const out = join(root, 'out');
   const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--visual-references', visuals, '--intent', '原生高保真', '--out', out], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
@@ -139,6 +140,7 @@ test('visual references fail closed into professional handoff instead of claimin
   const root = mkdtempSync(join(tmpdir(), 'v2-review-'));
   const { prd, requirements } = writeV2Fixture(root);
   const visuals = join(root, 'visuals.json');
+  writeFileSync(join(root, 'screen.png'), 'image');
   writeFileSync(visuals, JSON.stringify([{ id: 'ref-1', asset: 'screen.png', scope: { pageId: 'main', regionId: 'primary' }, bindings: [{ property: 'layout', fidelity: 'high' }], exclude: [] }]));
   const out = join(root, 'out');
   const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--visual-references', visuals, '--intent', '快速评审初版，优先速度', '--out', out], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });

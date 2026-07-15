@@ -47,9 +47,9 @@ function renderV2Prompt(baseline, visualReferences, stages) {
   const taxonomy = baseline.taxonomy.map(node => `${node.id}:${node.label} parent=${node.parentId ?? 'root'}`).join('\n');
   const pages = baseline.pages.map(page => [
     `PAGE ${page.id} ${page.name}`,
-    ...page.regions.map(region => `REGION ${region.id} order=${page.regions.indexOf(region)} layout=${JSON.stringify(region.layout ?? {})} behavior=${JSON.stringify(region.behavior ?? {})} prominence=${JSON.stringify(region.prominence ?? {})}`),
-    ...page.requirements.map(req => `REQUIREMENT ${req.id} exactCopy=${JSON.stringify(req.exactCopy ?? req.text)} component=${req.componentType ?? 'default'} state=${req.state ?? ''} visibleState=${req.visibleState ?? ''}`),
-    ...page.actions.map(action => `ACTION ${action.id} trigger=${action.trigger} feedback=${action.visibleFeedback} stateChange=${action.stateChange} next=${action.toPageId}`),
+    ...page.regions.map(region => `REGION ${region.id} order=${page.regions.indexOf(region)} position=${JSON.stringify(region.position ?? {})} layout=${JSON.stringify(region.layout ?? {})} behavior=${JSON.stringify(region.behavior ?? {})} prominence=${JSON.stringify(region.prominence ?? {})}`),
+    ...page.requirements.map(req => `REQUIREMENT ${req.id} page=${page.id} targetIds=${JSON.stringify(req.targetIds)} exactCopy=${JSON.stringify(req.exactCopy ?? req.text)} component=${req.componentType ?? 'default'} state=${req.state ?? ''} visibleState=${req.visibleState ?? ''}`),
+    ...page.actions.map(action => `ACTION ${action.id} from=${action.fromPageId} region=${action.regionId} requirementIds=${JSON.stringify(action.requirementIds)} trigger=${action.trigger} feedback=${action.visibleFeedback} stateChange=${action.stateChange} next=${action.toPageId}`),
   ].join('\n')).join('\n');
   const journeys = baseline.coreJourneys.map(j => `${j.id}: ${j.startPageId} --${j.actionIds.join(' -> ')}--> ${j.expectedEndPageId}`).join('\n');
   const refs = visualReferences.map(ref => `IMAGE ${ref.id} asset=${ref.asset} scope=${JSON.stringify(ref.scope)} bindings=${JSON.stringify(ref.bindings)} exclusions=${JSON.stringify(ref.exclude)}`).join('\n');
@@ -67,7 +67,7 @@ export function buildInspirePlan({ route, requirements = {}, inputs = {}, execut
     parentAssetId,
     designSkill,
     outputType: 'html',
-    files: inputs.assets ?? [],
+    files: [...new Set([...(inputs.assets ?? []), ...visualReferences.map(reference => reference.asset)])],
     referenceUrl: inputs.referenceUrl ?? null,
     prompt: executionBaseline ? renderV2Prompt(executionBaseline, visualReferences, stages) : renderInspirePrompt({ requirements, stages }),
     stages,

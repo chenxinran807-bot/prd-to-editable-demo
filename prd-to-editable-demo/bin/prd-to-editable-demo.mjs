@@ -103,9 +103,13 @@ export async function main(argv = process.argv.slice(2)) {
       }, null, 2)}\n`));
       return 5;
     }
-    const visualReferences = validateVisualReferences(visualInput, {
+    let visualReferences = validateVisualReferences(visualInput, {
       pageIds: ir.pages.map(({ id }) => id), regions: ir.regions.map(({ id, pageId }) => ({ id, pageId }))
     });
+    const visualBase = options.visualReferences ? dirname(resolve(options.visualReferences)) : process.cwd();
+    visualReferences = await Promise.all(visualReferences.map(async reference => {
+      const asset = resolve(visualBase, reference.asset); await readFile(asset); return { ...reference, asset };
+    }));
     const baseline = compileExecutionBaseline(ir, visualReferences);
     v2Context = { ir, baseline, visualReferences, confirmations };
   }
@@ -141,7 +145,7 @@ export async function main(argv = process.argv.slice(2)) {
       requirements,
       executionBaseline: v2Context?.baseline,
       visualReferences: v2Context?.visualReferences,
-      inputs: { prd: resolve(options.prd), semanticRequirements: requirementsPath, requirementsV2: options.requirementsV2 ? resolve(options.requirementsV2) : null, assets: options.assets.map(asset => resolve(asset)), referenceUrl: options.url ?? null },
+      inputs: { prd: resolve(options.prd), semanticRequirements: requirementsPath, requirementsV2: options.requirementsV2 ? resolve(options.requirementsV2) : null, assets: [...new Set([...options.assets.map(asset => resolve(asset)), ...(v2Context?.visualReferences.map(reference => reference.asset) ?? [])])], referenceUrl: options.url ?? null },
       qualityAssurance: { mode: route.deliveryMode, finalContainer: 'inspire', silentDowngradeAllowed: false, readiness: 'preflight-required' },
       specialistPlan,
       specialistBaseline,

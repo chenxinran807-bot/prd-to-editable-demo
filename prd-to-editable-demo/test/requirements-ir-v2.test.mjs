@@ -35,7 +35,7 @@ function validIr() {
     ],
     pages: [{ id: 'p1', name: 'Detail', regionIds: ['reg1'] }],
     regions: [{ id: 'reg1', pageId: 'p1', name: 'Primary', layout: { mode: 'stack', alignment: 'start' }, position: { order: 1, anchor: 'content' }, behavior: { scroll: 'page', sticky: false }, prominence: { level: 'primary', rationale: 'Core action' } }],
-    actions: [{ id: 'a1', name: 'Save', trigger: 'activate save control', visibleFeedback: 'Saved state appears', stateChange: 'item becomes saved', fromPageId: 'p1', toPageId: 'p1', regionId: 'reg1', requirementIds: ['r1'] }],
+    actions: [{ id: 'a1', name: 'Save', trigger: 'click', visibleFeedback: 'Saved state appears', stateChange: 'item becomes saved', fromPageId: 'p1', toPageId: 'p1', regionId: 'reg1', requirementIds: ['r1'] }],
     coreJourneys: [{ id: 'j1', name: 'Save flow', actionIds: ['a1'], startPageId: 'p1', expectedEndPageId: 'p1' }],
     blockers: [{ id: 'b1', text: 'Persistence behavior is unspecified', certainty: 'missing', sourceIds: [], requirementId: 'r1', theme: 'persistence', priority: 'P1', impact: 'Changes visible state', recommendation: 'Keep the item saved', options: ['Keep saved', 'Reset after exit'], resolutions: [{ option: 'Keep saved', patches: [{ entity: 'requirement', id: 'r1', field: 'visibleState', value: 'saved' }] }, { option: 'Reset after exit', patches: [{ entity: 'requirement', id: 'r1', field: 'visibleState', value: 'ready' }] }] }],
   };

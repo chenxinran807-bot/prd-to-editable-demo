@@ -42,7 +42,12 @@ export const runtimeSource = String.raw`
       element.addEventListener('click', () => {
         if (mode !== 'preview') return;
         const action = element.dataset.action ? JSON.parse(element.dataset.action) : null;
-        if (action?.type === 'navigate') showPage(action.target);
+        if (element.dataset.visibleFeedback) $('#interaction-status').textContent = element.dataset.visibleFeedback;
+        if (action?.type === 'navigate') {
+          showPage(action.target);
+          const target = document.querySelector('[data-page-id="' + CSS.escape(action.target) + '"] .status-chip');
+          if (target && element.dataset.stateChange) { target.textContent = element.dataset.stateChange; target.dataset.stateChange = element.dataset.stateChange; }
+        }
       });
     });
   };

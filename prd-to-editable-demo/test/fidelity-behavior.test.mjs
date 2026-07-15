@@ -27,7 +27,7 @@ function ir() {
       { id: 'copy', text: 'Show copy', exactCopy: 'Show the exact phrase', componentType: 'heading', state: 'ready', visibleState: 'visible', acceptanceCriteria: ['Exact phrase is visible'], certainty: 'explicit', sourceIds: ['visible'], uiEligible: true, targetIds: ['main'], taxonomyIds: ['child'] },
       { id: 'research', text: 'Internal research only', acceptanceCriteria: [], certainty: 'explicit', sourceIds: ['context'], uiEligible: false, targetIds: [], taxonomyIds: [] },
     ],
-    actions: [{ id: 'go', name: 'Continue', trigger: 'activate continue', visibleFeedback: 'Done page appears', stateChange: 'workflow completes', fromPageId: 'start', toPageId: 'done', regionId: 'main', requirementIds: ['copy'] }],
+    actions: [{ id: 'go', name: 'Continue', trigger: 'click', visibleFeedback: 'Done page appears', stateChange: 'workflow completes', fromPageId: 'start', toPageId: 'done', regionId: 'main', requirementIds: ['copy'] }],
     coreJourneys: [{ id: 'complete', name: 'Complete', startPageId: 'start', actionIds: ['go'], expectedEndPageId: 'done' }],
     blockers: [],
   };
