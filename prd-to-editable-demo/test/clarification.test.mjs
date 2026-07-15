@@ -30,6 +30,10 @@ test('shows at most three questions from only the highest-ranked theme', () => {
   assert.deepEqual(turn.questions[0].evidence, [{ quote: 'PRD quote' }]);
   assert.equal(turn.questions[0].impact, 'Changes scope');
   assert.ok(!('unrelated' in turn));
+  turn.questions[0].source.sourceIds.push('mutated');
+  turn.questions[0].evidence[0].quote = 'mutated';
+  assert.deepEqual(blockers[0].source, { sourceIds: ['s1'] });
+  assert.deepEqual(blockers[0].evidence, [{ quote: 'PRD quote' }]);
 });
 
 test('orders by priority while preserving source order within a priority', () => {
@@ -64,7 +68,8 @@ test('applies answers immutably, removes only answered blockers, and confirms th
     metadata: { keep: true },
   };
   const before = structuredClone(ir);
-  const result = applyClarifications(ir, [{ blockerId: 'a', answer: 'Use one workspace', answeredAt: '2026-07-15T01:00:00Z' }]);
+  const answers = [{ blockerId: 'a', answer: 'Use one workspace', answeredAt: '2026-07-15T01:00:00Z' }];
+  const result = applyClarifications(ir, answers);
   assert.deepEqual(ir, before);
   assert.deepEqual(result.blockers.map(({ id }) => id), ['b']);
   assert.equal(result.requirements[0].certainty, 'confirmed');
@@ -75,6 +80,8 @@ test('applies answers immutably, removes only answered blockers, and confirms th
   ]);
   assert.deepEqual(result.requirements[1], ir.requirements[1]);
   assert.deepEqual(result.metadata, { keep: true });
+  result.requirements[0].confirmations[0].answer = 'mutated';
+  assert.equal(answers[0].answer, 'Use one workspace');
 });
 
 test('validates malformed, duplicate, and unknown answers', () => {
@@ -99,9 +106,17 @@ test('validates malformed and duplicate IR blockers before applying answers', ()
   ] }, []), /duplicate/i);
 });
 
-test('rejects an answered blocker that does not map to a requirement', () => {
-  const ir = { requirements: [{ id: 'r1' }], blockers: [blocker('a', 'scope', 'P0', 'missing')] };
+test('rejects every blocker with an unknown requirement even without answers or in a partial batch', () => {
+  const dangling = blocker('b', 'flow', 'P1', 'missing');
+  assert.throws(() => applyClarifications({ requirements: [{ id: 'r1' }], blockers: [dangling] }, []), /requirement/i);
+  const ir = { requirements: [{ id: 'r1' }], blockers: [blocker('a', 'scope', 'P0', 'r1'), dangling] };
   assert.throws(() => applyClarifications(ir, [{ blockerId: 'a', answer: 'A', answeredAt: 't1' }]), /requirement/i);
+});
+
+test('requires requirement objects with unique non-empty IDs', () => {
+  for (const requirements of [
+    [null], [{}], [{ id: '' }], [{ id: '   ' }], [{ id: 'r1' }, { id: 'r1' }],
+  ]) assert.throws(() => applyClarifications({ requirements, blockers: [] }, []), TypeError);
 });
 
 test('does not confirm a requirement until every linked blocker is resolved', () => {

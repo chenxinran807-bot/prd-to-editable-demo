@@ -68,20 +68,30 @@ function validateAnswers(answers, blockerIds) {
   });
 }
 
+function validateRequirements(requirements) {
+  const ids = new Set();
+  requirements.forEach((requirement, index) => {
+    if (!requirement || typeof requirement !== 'object' || Array.isArray(requirement)) fail(`requirements[${index}] must be an object`);
+    nonEmptyString(requirement.id, `requirements[${index}].id`);
+    if (ids.has(requirement.id)) fail(`duplicate requirement id ${requirement.id}`);
+    ids.add(requirement.id);
+  });
+  return ids;
+}
+
 export function applyClarifications(ir, answers) {
   if (!ir || typeof ir !== 'object' || Array.isArray(ir)) fail('ir must be an object');
   if (!Array.isArray(ir.blockers)) fail('ir.blockers must be an array');
   if (!Array.isArray(ir.requirements)) fail('ir.requirements must be an array');
 
   validateBlockers(ir.blockers);
+  const requirementIds = validateRequirements(ir.requirements);
+  for (const blocker of ir.blockers) {
+    if (!requirementIds.has(blocker.requirementId)) fail(`blocker ${blocker.id} references unknown requirement ${blocker.requirementId}`);
+  }
   const blockerIds = new Set(ir.blockers.map(({ id }) => id));
   validateAnswers(answers, blockerIds);
-  const requirementIds = new Set(ir.requirements.map(({ id }) => id));
   const blockerById = new Map(ir.blockers.map((blocker) => [blocker.id, blocker]));
-  for (const { blockerId } of answers) {
-    const requirementId = blockerById.get(blockerId).requirementId;
-    if (!requirementIds.has(requirementId)) fail(`blocker ${blockerId} references unknown requirement ${requirementId}`);
-  }
   const result = structuredClone(ir);
   const answeredIds = new Set(answers.map(({ blockerId }) => blockerId));
   result.blockers = result.blockers.filter(({ id }) => !answeredIds.has(id));
