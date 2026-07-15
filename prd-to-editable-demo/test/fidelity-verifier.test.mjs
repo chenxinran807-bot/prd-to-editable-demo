@@ -25,7 +25,7 @@ function fixture() {
   };
   const model = {
     taxonomy: structuredClone(baseline.taxonomy), coreJourneys: structuredClone(baseline.coreJourneys), startPage: 'start',
-    appliedVisualReferences: [{ id: 'visual', scope: { pageId: 'start', regionId: 'hero' }, bindings: [{ property: 'layout', fidelity: 'exact' }], excludedProperties: ['color'] }],
+    appliedVisualReferences: [{ id: 'visual', scope: { pageId: 'start', regionId: 'hero' }, bindings: [{ property: 'layout', fidelity: 'exact' }], excludedProperties: ['color'], elementKeys: ['copy'] }],
     pages: [
       { id: 'start', title: 'Start', elements: [
         { key: 'copy', type: 'heading', text: 'Hello exactly', requirementId: 'copy', regionId: 'hero' },
@@ -104,8 +104,36 @@ test('requires visual binding metadata and rejects claims for excluded propertie
   assert.throws(() => verifyFidelity(missing), /visual reference visual.*missing/i);
   const conflict = fixture(); conflict.model.appliedVisualReferences[0].bindings.push({ property: 'color', fidelity: 'exact' });
   assert.throws(() => verifyFidelity(conflict), /visual reference visual.*excluded property color/i);
-  const review = fixture(); review.baseline.pages[0].visualReferences[0].bindings[0].fidelity = 'subjective'; review.model.appliedVisualReferences[0].bindings[0].fidelity = 'subjective';
-  assert.equal(verifyFidelity(review).checks.find(check => check.name === 'visual references').reviewRequired, true);
+});
+
+test('requires real in-scope element keys for every applied visual reference', () => {
+  const missing = fixture(); missing.model.appliedVisualReferences[0].elementKeys = [];
+  assert.throws(() => verifyFidelity(missing), /visual reference visual.*non-empty elementKeys/i);
+  const fictional = fixture(); fictional.model.appliedVisualReferences[0].elementKeys = ['fictional'];
+  assert.throws(() => verifyFidelity(fictional), /visual reference visual.*unknown element key fictional/i);
+  const wrongRegion = fixture(); wrongRegion.model.pages[0].elements.push({ key: 'other', text: 'Other', regionId: 'other-region' }); wrongRegion.model.appliedVisualReferences[0].elementKeys = ['other'];
+  assert.throws(() => verifyFidelity(wrongRegion), /visual reference visual.*element key other.*region hero/i);
+  const wrongPage = fixture(); wrongPage.model.pages[1].elements.push({ key: 'done-key', text: 'Done' }); wrongPage.model.appliedVisualReferences[0].elementKeys = ['done-key'];
+  assert.throws(() => verifyFidelity(wrongPage), /visual reference visual.*element key done-key.*page start/i);
+});
+
+test('requires exact exclusions and bindings with no extra visual claims', () => {
+  const missingExclude = fixture(); missingExclude.model.appliedVisualReferences[0].excludedProperties = [];
+  assert.throws(() => verifyFidelity(missingExclude), /visual reference visual.*excluded properties.*baseline/i);
+  const extraExclude = fixture(); extraExclude.model.appliedVisualReferences[0].excludedProperties.push('typography');
+  assert.throws(() => verifyFidelity(extraExclude), /visual reference visual.*excluded properties.*baseline/i);
+  const extraBinding = fixture(); extraBinding.model.appliedVisualReferences[0].bindings.push({ property: 'spacing', fidelity: 'exact' });
+  assert.throws(() => verifyFidelity(extraBinding), /visual reference visual.*bindings.*baseline/i);
+});
+
+test('requires subjective review metadata for high, local, and inspiration fidelity', () => {
+  for (const fidelity of ['high', 'local', 'inspiration']) {
+    const missing = fixture(); missing.baseline.pages[0].visualReferences[0].bindings[0].fidelity = fidelity; missing.model.appliedVisualReferences[0].bindings[0].fidelity = fidelity;
+    assert.throws(() => verifyFidelity(missing), new RegExp(`visual reference visual.*${fidelity}.*subjective review`, 'i'));
+    missing.model.appliedVisualReferences[0].subjectiveReview = 'required';
+    const result = verifyFidelity(missing);
+    assert.equal(result.checks.find(check => check.name === 'visual references').reviewRequired, true);
+  }
 });
 
 test('rejects explicit background requirement traces but ignores incidental words', () => {

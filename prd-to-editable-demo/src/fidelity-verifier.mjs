@@ -38,6 +38,14 @@ function excludedProperties(reference) {
   return reference.exclude ?? reference.excludedProperties ?? [];
 }
 
+function sortedStrings(values) {
+  return [...values].sort((left, right) => left.localeCompare(right));
+}
+
+function bindingSignatures(bindings) {
+  return sortedStrings((bindings ?? []).map(binding => `${binding.property}\u0000${binding.fidelity}`));
+}
+
 export function verifyFidelity({ baseline, model }) {
   if (!baseline || typeof baseline !== 'object') throw new TypeError('verifyFidelity requires a baseline');
   if (!model || typeof model !== 'object') throw new TypeError('verifyFidelity requires a model');
@@ -126,16 +134,36 @@ export function verifyFidelity({ baseline, model }) {
     if (matches.length !== 1) fail(`visual reference ${reference.id} is missing or duplicated`);
     const match = matches[0];
     if (!same(match.scope, reference.scope)) fail(`visual reference ${reference.id} scope differs from baseline`);
-    const excluded = new Set(excludedProperties(reference));
+    if (!Array.isArray(match.elementKeys) || !match.elementKeys.length) fail(`visual reference ${reference.id} requires non-empty elementKeys`);
+    for (const key of match.elementKeys) {
+      const resolved = elements.filter(item => item.element.key === key);
+      if (!resolved.length) fail(`visual reference ${reference.id} has unknown element key ${key}`);
+      if (resolved.length > 1) fail(`visual reference ${reference.id} has ambiguous element key ${key}`);
+      if (resolved[0].page.id !== reference.scope.pageId) fail(`visual reference ${reference.id} element key ${key} is outside page ${reference.scope.pageId}`);
+      if (reference.scope.regionId !== undefined && resolved[0].element.regionId !== reference.scope.regionId) {
+        fail(`visual reference ${reference.id} element key ${key} is outside region ${reference.scope.regionId}`);
+      }
+    }
+    const baselineExcluded = excludedProperties(reference);
+    const appliedExcluded = excludedProperties(match);
+    if (!same(sortedStrings(appliedExcluded), sortedStrings(baselineExcluded))) {
+      fail(`visual reference ${reference.id} excluded properties differ from baseline`);
+    }
+    const excluded = new Set(baselineExcluded);
     for (const binding of match.bindings ?? []) {
       if (excluded.has(binding.property)) fail(`visual reference ${reference.id} claims excluded property ${binding.property}`);
     }
-    for (const binding of reference.bindings ?? []) {
-      const found = (match.bindings ?? []).some(candidate => candidate.property === binding.property && candidate.fidelity === binding.fidelity);
-      if (!found) fail(`visual reference ${reference.id} is missing ${binding.property} binding at ${binding.fidelity} fidelity`);
-      if (!['exact', 'high', 'medium', 'low'].includes(binding.fidelity)) reviewRequired = true;
+    if (!same(bindingSignatures(match.bindings), bindingSignatures(reference.bindings))) {
+      fail(`visual reference ${reference.id} bindings differ from baseline`);
     }
-    traceability.push({ kind: 'visual-reference', id: reference.id, pageId: page.id, elementKeys: match.elementKeys ?? [] });
+    const subjectiveFidelity = (reference.bindings ?? []).find(binding => ['high', 'local', 'inspiration'].includes(binding.fidelity));
+    if (subjectiveFidelity) {
+      if (match.subjectiveReview !== 'required') {
+        fail(`visual reference ${reference.id} ${subjectiveFidelity.fidelity} fidelity requires subjective review`);
+      }
+      reviewRequired = true;
+    }
+    traceability.push({ kind: 'visual-reference', id: reference.id, pageId: page.id, elementKeys: [...match.elementKeys] });
   }
   checks.push({ name: 'visual references', passed: true, ...(reviewRequired ? { reviewRequired: true } : {}) });
 
