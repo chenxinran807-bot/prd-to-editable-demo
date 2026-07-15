@@ -22,7 +22,7 @@ function ir() {
     sourceCoverage: [{ quote: 'Show the exact phrase', sourceIds: ['visible'] }, { quote: 'Internal research only', sourceIds: ['context'] }],
     taxonomy: [{ id: 'root', label: 'Workspace', parentId: null }, { id: 'child', label: 'Request', parentId: 'root' }],
     pages: [{ id: 'start', name: 'Start', regionIds: ['main'] }, { id: 'done', name: 'Done', regionIds: [] }],
-    regions: [{ id: 'main', pageId: 'start', name: 'Main', layout: { mode: 'stack', alignment: 'start' }, position: { order: 0, anchor: 'content' }, behavior: { scroll: 'page', sticky: false }, prominence: { level: 'primary', rationale: 'Core task' } }],
+    regions: [{ id: 'main', pageId: 'start', name: 'Main', layout: { mode: 'stack', alignment: 'start' }, position: { order: 0, anchor: 'first' }, behavior: { scroll: 'page', sticky: false }, prominence: { level: 'primary', rationale: 'Core task' } }],
     requirements: [
       { id: 'copy', text: 'Show copy', exactCopy: 'Show the exact phrase', componentType: 'heading', state: 'ready', visibleState: 'visible', acceptanceCriteria: ['Exact phrase is visible'], certainty: 'explicit', sourceIds: ['visible'], uiEligible: true, targetIds: ['main'], taxonomyIds: ['child'] },
       { id: 'research', text: 'Internal research only', acceptanceCriteria: [], certainty: 'explicit', sourceIds: ['context'], uiEligible: false, targetIds: [], taxonomyIds: [] },

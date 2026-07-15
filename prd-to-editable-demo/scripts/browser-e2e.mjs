@@ -159,6 +159,9 @@ export async function verifyFinalDeliverableJourneys({ outputDir, url, baseline,
         if (!await control.isEnabled()) throw deliveryError(journey.id, actionId, currentPageId, 'disabled action control');
         const kind = await control.getAttribute?.('data-kind');
         if (kind === 'notice' || kind === 'static') throw deliveryError(journey.id, actionId, currentPageId, `${kind} action control is not interactive`);
+        for (const [attribute, expected] of [['data-trigger', action.trigger], ['data-visible-feedback', action.visibleFeedback], ['data-state-change', action.stateChange]]) {
+          if (expected !== undefined && await control.getAttribute?.(attribute) !== expected) throw deliveryError(journey.id, actionId, currentPageId, `${attribute} does not match baseline`);
+        }
         await control.click();
         await quiesce();
         if (runtimeFailures.length) throw deliveryError(journey.id, actionId, currentPageId, runtimeFailures.join('; '));

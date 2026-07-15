@@ -145,6 +145,7 @@ export function validateRequirementsIrV2(input, source) {
     if (!pageIds.has(region.pageId)) fail(`region ${region.id} references unknown page ${region.pageId}`);
     const page = input.pages.find(({ id }) => id === region.pageId);
     if (!page.regionIds.includes(region.id)) fail(`region ${region.id} is not listed by page ${region.pageId}`);
+    if (region.position) { const index = page.regionIds.indexOf(region.id); const anchor = index === 0 ? 'first' : `after:${page.regionIds[index - 1]}`; if (region.position.order !== index || region.position.anchor !== anchor) fail(`region ${region.id} position must match canonical order ${index} and anchor ${anchor}`); }
   }
   for (const requirement of input.requirements) for (const targetId of requirement.targetIds) {
     if (!pageIds.has(targetId) && !regionIds.has(targetId)) fail(`requirement ${requirement.id} references unknown target ${targetId}`);

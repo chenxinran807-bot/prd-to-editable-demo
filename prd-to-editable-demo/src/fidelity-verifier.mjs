@@ -143,7 +143,8 @@ export function verifyFidelity({ baseline, model }) {
     if (match.element.disabled || match.element.hidden) fail(`action ${action.id} must be enabled and visible`);
     if (match.element.action?.type !== 'navigate') fail(`action ${action.id} must use navigate, not notice, alert, disabled, or static copy`);
     if (match.element.action.target !== action.toPageId) fail(`action ${action.id} must target ${action.toPageId}`);
-    traceability.push({ kind: 'action', id: action.id, pageId: page.id, elementKeys: [match.element.key] });
+    for (const field of ['trigger', 'visibleFeedback', 'stateChange']) if (action[field] !== undefined && match.element[field] !== action[field]) fail(`action ${action.id} ${field} must equal baseline`);
+    traceability.push({ kind: 'action', id: action.id, pageId: page.id, elementKeys: [match.element.key], ...(action.trigger !== undefined ? { trigger: action.trigger, visibleFeedback: action.visibleFeedback, stateChange: action.stateChange } : {}) });
   }
   for (const { element } of elements) {
     if ((element.actionId || element.action) && !declaredIds.has(element.actionId) && !allowedExtra(element)) {

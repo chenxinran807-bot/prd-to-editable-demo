@@ -34,7 +34,7 @@ function validIr() {
       { id: 't-child', label: 'Saving', parentId: 't-root' },
     ],
     pages: [{ id: 'p1', name: 'Detail', regionIds: ['reg1'] }],
-    regions: [{ id: 'reg1', pageId: 'p1', name: 'Primary', layout: { mode: 'stack', alignment: 'start' }, position: { order: 1, anchor: 'content' }, behavior: { scroll: 'page', sticky: false }, prominence: { level: 'primary', rationale: 'Core action' } }],
+    regions: [{ id: 'reg1', pageId: 'p1', name: 'Primary', layout: { mode: 'stack', alignment: 'start' }, position: { order: 0, anchor: 'first' }, behavior: { scroll: 'page', sticky: false }, prominence: { level: 'primary', rationale: 'Core action' } }],
     actions: [{ id: 'a1', name: 'Save', trigger: 'click', visibleFeedback: 'Saved state appears', stateChange: 'item becomes saved', fromPageId: 'p1', toPageId: 'p1', regionId: 'reg1', requirementIds: ['r1'] }],
     coreJourneys: [{ id: 'j1', name: 'Save flow', actionIds: ['a1'], startPageId: 'p1', expectedEndPageId: 'p1' }],
     blockers: [{ id: 'b1', text: 'Persistence behavior is unspecified', certainty: 'missing', sourceIds: [], requirementId: 'r1', theme: 'persistence', priority: 'P1', impact: 'Changes visible state', recommendation: 'Keep the item saved', options: ['Keep saved', 'Reset after exit'], resolutions: [{ option: 'Keep saved', patches: [{ entity: 'requirement', id: 'r1', field: 'visibleState', value: 'saved' }] }, { option: 'Reset after exit', patches: [{ entity: 'requirement', id: 'r1', field: 'visibleState', value: 'ready' }] }] }],
@@ -51,7 +51,7 @@ test('accepts and deep-copies a valid typed v2 IR while preserving hierarchy', (
   assert.equal(result.taxonomy[1].parentId, 't-root');
   assert.equal(result.requirements[0].exactCopy, 'Save this item');
   assert.equal(result.requirements[0].componentType, 'button');
-  assert.equal(result.regions[0].position.order, 1);
+  assert.equal(result.regions[0].position.order, 0);
   assert.equal(result.actions[0].visibleFeedback, 'Saved state appears');
   assert.deepEqual(input, before);
 });

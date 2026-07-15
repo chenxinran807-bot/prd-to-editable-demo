@@ -42,10 +42,12 @@ export const runtimeSource = String.raw`
       element.addEventListener('click', () => {
         if (mode !== 'preview') return;
         const action = element.dataset.action ? JSON.parse(element.dataset.action) : null;
-        if (element.dataset.visibleFeedback) $('#interaction-status').textContent = element.dataset.visibleFeedback;
+        if (element.dataset.visibleFeedback) { $('#interaction-status').textContent = element.dataset.visibleFeedback; $('#interaction-status').dataset.lastAction = element.dataset.actionId || ''; }
         if (action?.type === 'navigate') {
           showPage(action.target);
           const target = document.querySelector('[data-page-id="' + CSS.escape(action.target) + '"] .status-chip');
+          const targetPage = document.querySelector('[data-page-id="' + CSS.escape(action.target) + '"]');
+          if (targetPage && element.dataset.stateChange) targetPage.dataset.stateChange = element.dataset.stateChange;
           if (target && element.dataset.stateChange) { target.textContent = element.dataset.stateChange; target.dataset.stateChange = element.dataset.stateChange; }
         }
       });

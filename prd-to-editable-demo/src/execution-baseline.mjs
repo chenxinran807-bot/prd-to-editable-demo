@@ -69,6 +69,7 @@ export function compileExecutionBaseline(ir, visualReferences, previous = null, 
     if (!owner) throw new Error(`Region ${region.id} references unknown page ${region.pageId}`);
     const occurrences = owner.regionIds.filter((id) => id === region.id).length;
     if (occurrences !== 1) throw new Error(`Region ${region.id} is not listed exactly once by page ${region.pageId}`);
+    if (region.position) { const index = owner.regionIds.indexOf(region.id); const anchor = index === 0 ? 'first' : `after:${owner.regionIds[index - 1]}`; if (region.position.order !== index || region.position.anchor !== anchor) throw new Error(`Region ${region.id} position must match canonical order ${index} and anchor ${anchor}`); }
   }
 
   for (const requirement of requirements) {

@@ -21,7 +21,8 @@ export function renderDemo(model) {
     const regions = (page.regions ?? []).map(region => {
       const elements = page.elements.filter(element => element.regionId === region.id); elements.forEach(element => assigned.add(element));
       const mode = region.layout?.mode ?? 'stack'; const alignment = region.layout?.alignment ?? 'stretch'; const scroll = region.behavior?.scroll ?? 'none'; const prominence = region.prominence?.level ?? 'secondary';
-      return `<div class="semantic-region layout-${mode} align-${alignment} scroll-${scroll} prominence-${prominence}${region.behavior?.sticky ? ' is-sticky' : ''}" data-region-id="${escapeHtml(region.id)}" data-layout="${escapeHtml(JSON.stringify(region.layout ?? {}))}" data-behavior="${escapeHtml(JSON.stringify(region.behavior ?? {}))}" data-prominence="${escapeHtml(JSON.stringify(region.prominence ?? {}))}">${elements.map(renderElement).join('\n')}</div>`;
+      const index = page.regions.indexOf(region); const anchor = region.position?.anchor ?? (index === 0 ? 'first' : `after:${page.regions[index - 1].id}`);
+      return `<div class="semantic-region layout-${mode} align-${alignment} scroll-${scroll} prominence-${prominence}${region.behavior?.sticky ? ' is-sticky' : ''}" data-region-id="${escapeHtml(region.id)}" data-position-order="${index}" data-position-anchor="${escapeHtml(anchor)}" data-layout="${escapeHtml(JSON.stringify(region.layout ?? {}))}" data-behavior="${escapeHtml(JSON.stringify(region.behavior ?? {}))}" data-prominence="${escapeHtml(JSON.stringify(region.prominence ?? {}))}">${elements.map(renderElement).join('\n')}</div>`;
     }).join('\n');
     return `<section class="proto-page" data-page-id="${escapeHtml(page.id)}" hidden>
     <div class="phone-header"><span>${escapeHtml(model.product.name)}</span><span class="status-chip">${escapeHtml(page.state)}</span></div>
