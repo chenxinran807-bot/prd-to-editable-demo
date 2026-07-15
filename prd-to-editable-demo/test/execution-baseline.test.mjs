@@ -67,6 +67,44 @@ test('rejects unknown requirement targets and invalid visual region ownership', 
   assert.throws(() => compileExecutionBaseline(fixture(), badVisual), /belongs to page page-a/);
 });
 
+test('rejects duplicate or empty graph entity IDs with entity diagnostics', () => {
+  for (const collection of ['pages', 'regions', 'requirements', 'actions', 'coreJourneys']) {
+    const ir = fixture();
+    ir[collection].push(structuredClone(ir[collection][0]));
+    assert.throws(() => compileExecutionBaseline(ir, visuals), new RegExp(`duplicate ${collection.slice(0, -1)} id`, 'i'));
+    ir[collection].pop();
+    ir[collection][0].id = '   ';
+    assert.throws(() => compileExecutionBaseline(ir, visuals), new RegExp(`${collection.slice(0, -1)}.*id`, 'i'));
+  }
+  const duplicateVisuals = [visuals[0], structuredClone(visuals[0])];
+  assert.throws(() => compileExecutionBaseline(fixture(), duplicateVisuals), /duplicate visual reference id visual-1/i);
+});
+
+test('rejects orphan regions and invalid action graph references', () => {
+  const orphan = fixture();
+  orphan.regions.push({ id: 'region-orphan', pageId: 'page-a', name: 'Orphan' });
+  assert.throws(() => compileExecutionBaseline(orphan, visuals), /region region-orphan.*not listed.*page page-a/i);
+
+  for (const [field, value, message] of [
+    ['fromPageId', 'missing', /action act-1.*unknown from page missing/i],
+    ['toPageId', 'missing', /action act-1.*unknown to page missing/i],
+    ['regionId', 'missing', /action act-1.*unknown region missing/i],
+    ['regionId', 'region-done', /action act-1.*region region-done.*page page-b.*from page page-a/i],
+  ]) {
+    const ir = fixture(); ir.actions[0][field] = value;
+    assert.throws(() => compileExecutionBaseline(ir, visuals), message);
+  }
+});
+
+test('rejects dangling or inconsistent journey graphs', () => {
+  const dangling = fixture(); dangling.coreJourneys[0].actionIds = ['missing'];
+  assert.throws(() => compileExecutionBaseline(dangling, visuals), /journey journey-1.*unknown action missing/i);
+  const endpoint = fixture(); endpoint.coreJourneys[0].expectedEndPageId = 'missing';
+  assert.throws(() => compileExecutionBaseline(endpoint, visuals), /journey journey-1.*unknown expected end page missing/i);
+  const inconsistent = fixture(); inconsistent.coreJourneys[0].startPageId = 'page-b';
+  assert.throws(() => compileExecutionBaseline(inconsistent, visuals), /journey journey-1.*start.*action act-1/i);
+});
+
 test('builds model in baseline order with exact copy and declared actions only', () => {
   const baseline = compileExecutionBaseline(fixture(), visuals);
   const model = executionBaselineToModel(baseline, { name: 'Neutral product', goal: 'Complete a flow' });
