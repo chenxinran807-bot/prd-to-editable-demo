@@ -21,6 +21,9 @@ test('packaged Skill installs without a wrapper directory and runs independently
   assert.deepEqual(skillFiles, ['SKILL.md']);
   assert.equal(existsSync(join(installed, 'inspire-business-skill')), false);
   assert.equal(existsSync(join(installed, 'inspire-business-skill-release')), false);
+  for (const forbidden of ['test', 'fixtures', 'benchmark', 'evidence', 'docs', 'dist', 'node_modules', '.git']) {
+    assert.equal(existsSync(join(installed, forbidden)), false, `${forbidden} must not ship`);
+  }
   for (const file of [
     'references/requirements-ir.md',
     'references/capability-policy.md',
@@ -40,8 +43,6 @@ test('packaged Skill installs without a wrapper directory and runs independently
     'src/fidelity-verifier.mjs',
     'src/capability-controller.mjs'
   ]) assert.ok(existsSync(join(installed, file)), `${file} must ship`);
-  assert.match(readFileSync(join(installed, 'scripts', 'package-skill.sh'), 'utf8'), /missing standalone core file/);
-
   const emptyHome = join(root, 'empty-home');
   const run = spawnSync(process.execPath, [
     join(installed, 'bin', 'prd-to-editable-demo.mjs'),

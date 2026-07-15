@@ -19,5 +19,5 @@
 ## Domain-neutral JSON example
 
 ```json
-{"version":3,"pages":[{"id":"p1","regions":[{"id":"g1"}],"requirements":[{"id":"r1","exactCopy":"Request received"}],"actions":[{"id":"a1","fromPageId":"p1","toPageId":"p2","regionId":"g1"}]}],"coreJourneys":[{"id":"j1","startPageId":"p1","actionIds":["a1"],"expectedEndPageId":"p2"}]}
+{"schemaVersion":1,"version":3,"pages":[{"id":"p1","name":"Form","regions":[{"id":"g1","pageId":"p1","name":"Actions"}],"requirements":[{"id":"r1","exactCopy":"Request received","componentType":"heading","state":"complete","visibleState":"visible","acceptanceCriteria":["Exact copy is visible"],"targetIds":["g1"]}],"actions":[{"id":"a1","trigger":"activate submit","visibleFeedback":"Receipt appears","stateChange":"request becomes submitted","fromPageId":"p1","toPageId":"p2","regionId":"g1"}],"visualReferences":[]}],"coreJourneys":[{"id":"j1","startPageId":"p1","actionIds":["a1"],"expectedEndPageId":"p2"}]}
 ```

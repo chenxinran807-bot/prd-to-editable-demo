@@ -70,16 +70,8 @@ export async function main(argv = process.argv.slice(2)) {
   let v2Context = null;
   if (options.requirementsV2) {
     let ir = validateRequirementsIrV2(await readJson(options.requirementsV2, 'requirements v2'), source);
-    const enrichBlockers = value => ({
+    const prepareClarifications = value => ({
       ...value,
-      requirements: value.requirements.map(requirement => ({
-        ...requirement,
-        targetIds: [...new Set(value.actions.filter(action => action.requirementIds.includes(requirement.id)).map(action => action.regionId ?? action.fromPageId))]
-          .concat(value.actions.some(action => action.requirementIds.includes(requirement.id)) ? [] : [value.pages[0]?.id]).filter(Boolean),
-        certainty: value.sourceUnits.find(unit => requirement.sourceIds.includes(unit.id))?.certainty ?? 'explicit',
-        evidence: requirement.sourceIds.map(id => ({ quote: value.sourceUnits.find(unit => unit.id === id)?.quote })).filter(item => item.quote),
-        acceptance: []
-      })),
       blockers: value.blockers.map((blocker) => ({
         ...blocker, theme: 'requirements', priority: blocker.certainty === 'conflicting' ? 'P0' : 'P1', question: blocker.text
       }))
@@ -89,7 +81,7 @@ export async function main(argv = process.argv.slice(2)) {
       return value;
     };
     const confirmations = ensureArray(options.confirmations ? await readJson(options.confirmations, 'confirmations') : [], 'confirmations');
-    ir = enrichBlockers(ir);
+    ir = prepareClarifications(ir);
     ir = applyClarifications(ir, confirmations);
     const turn = buildClarificationTurn(ir.blockers);
     if (turn) {

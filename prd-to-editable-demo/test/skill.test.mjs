@@ -34,6 +34,12 @@ test('Skill orders fidelity contracts before generation and Inspire routing', as
   }
 });
 
+test('Skill public workflow invokes only the v2 requirements contract', async () => {
+  const source = await readFile(new URL('../SKILL.md', import.meta.url), 'utf8');
+  assert.match(source, /prd-to-editable-demo\.mjs[^\n]*--requirements-v2/);
+  assert.doesNotMatch(source, /prd-to-editable-demo\.mjs[^\n]*--requirements(?:\s|=)/);
+});
+
 test('Skill metadata clearly triggers PRD editable prototype requests', async () => {
   const source = await readFile(new URL('../SKILL.md', import.meta.url), 'utf8');
   assert.match(source, /^---\nname: prd-to-editable-demo\n/m);

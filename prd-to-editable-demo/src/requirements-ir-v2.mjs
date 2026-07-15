@@ -15,6 +15,14 @@ function strings(value, name) {
   if (!Array.isArray(value)) fail(`${name} must be an array`);
   value.forEach((item, index) => string(item, `${name}[${index}]`));
 }
+function optionalString(value, name) { if (value !== undefined) string(value, name); }
+function boolean(value, name) { if (typeof value !== 'boolean') fail(`${name} must be a boolean`); }
+function integer(value, name) { if (!Number.isInteger(value) || value < 0) fail(`${name} must be a non-negative integer`); }
+function structured(value, allowed, name, validators) {
+  if (value === undefined) return;
+  object(value, name); keys(value, allowed, name);
+  for (const [field, validate] of Object.entries(validators)) if (value[field] !== undefined) validate(value[field], `${name}.${field}`);
+}
 function keys(value, allowed, name) {
   for (const key of Object.keys(value)) if (!allowed.includes(key)) fail(`${name} has unknown property ${key}`);
 }
@@ -81,14 +89,22 @@ export function validateRequirementsIrV2(input, source) {
   const requirementIds = uniqueIds(input.requirements, 'requirements');
   const taxonomyIds = uniqueIds(input.taxonomy, 'taxonomy');
   for (const requirement of input.requirements) {
-    keys(requirement, ['id', 'text', 'sourceIds', 'uiEligible', 'taxonomyIds'], `requirement ${requirement.id}`);
+    keys(requirement, ['id', 'text', 'sourceIds', 'uiEligible', 'taxonomyIds', 'targetIds', 'certainty', 'exactCopy', 'componentType', 'state', 'visibleState', 'acceptanceCriteria'], `requirement ${requirement.id}`);
     string(requirement.text, `requirement ${requirement.id} text`);
+    optionalString(requirement.exactCopy, `requirement ${requirement.id} exactCopy`);
+    optionalString(requirement.componentType, `requirement ${requirement.id} componentType`);
+    optionalString(requirement.state, `requirement ${requirement.id} state`);
+    optionalString(requirement.visibleState, `requirement ${requirement.id} visibleState`);
+    strings(requirement.acceptanceCriteria, `requirement ${requirement.id} acceptanceCriteria`);
+    strings(requirement.targetIds, `requirement ${requirement.id} targetIds`);
+    if (!CERTAINTIES.has(requirement.certainty)) fail(`unknown requirement certainty ${requirement.certainty}`);
     references(requirement.sourceIds, sourceIds, `requirement ${requirement.id} sourceIds`, 'sourceUnit');
     if (typeof requirement.uiEligible !== 'boolean') fail(`requirement ${requirement.id} uiEligible must be boolean`);
     references(requirement.taxonomyIds, taxonomyIds, `requirement ${requirement.id} taxonomyIds`, 'taxonomy node');
     if (requirement.uiEligible && !requirement.sourceIds.some((id) => input.sourceUnits.find((unit) => unit.id === id)?.purpose === 'product_requirement')) {
       fail(`UI-eligible requirement ${requirement.id} must have a product_requirement source`);
     }
+    if (requirement.uiEligible && requirement.targetIds.length === 0) fail(`UI-eligible requirement ${requirement.id} must have at least one target`);
   }
   for (const node of input.taxonomy) {
     keys(node, ['id', 'label', 'parentId'], `taxonomy ${node.id}`);
@@ -119,17 +135,27 @@ export function validateRequirementsIrV2(input, source) {
     }
   }
   for (const region of input.regions) {
-    keys(region, ['id', 'pageId', 'name'], `region ${region.id}`);
+    keys(region, ['id', 'pageId', 'name', 'layout', 'position', 'behavior', 'prominence'], `region ${region.id}`);
     string(region.name, `region ${region.id} name`); string(region.pageId, `region ${region.id} pageId`);
+    structured(region.layout, ['mode', 'alignment'], `region ${region.id} layout`, { mode: string, alignment: string });
+    structured(region.position, ['order', 'anchor'], `region ${region.id} position`, { order: integer, anchor: string });
+    structured(region.behavior, ['scroll', 'sticky'], `region ${region.id} behavior`, { scroll: string, sticky: boolean });
+    structured(region.prominence, ['level', 'rationale'], `region ${region.id} prominence`, { level: string, rationale: string });
     if (!pageIds.has(region.pageId)) fail(`region ${region.id} references unknown page ${region.pageId}`);
     const page = input.pages.find(({ id }) => id === region.pageId);
     if (!page.regionIds.includes(region.id)) fail(`region ${region.id} is not listed by page ${region.pageId}`);
   }
+  for (const requirement of input.requirements) for (const targetId of requirement.targetIds) {
+    if (!pageIds.has(targetId) && !regionIds.has(targetId)) fail(`requirement ${requirement.id} references unknown target ${targetId}`);
+  }
 
   const actionIds = uniqueIds(input.actions, 'actions');
   for (const action of input.actions) {
-    keys(action, ['id', 'name', 'fromPageId', 'toPageId', 'regionId', 'requirementIds'], `action ${action.id}`);
+    keys(action, ['id', 'name', 'trigger', 'visibleFeedback', 'stateChange', 'fromPageId', 'toPageId', 'regionId', 'requirementIds'], `action ${action.id}`);
     string(action.name, `action ${action.id} name`);
+    string(action.trigger, `action ${action.id} trigger`);
+    string(action.visibleFeedback, `action ${action.id} visibleFeedback`);
+    string(action.stateChange, `action ${action.id} stateChange`);
     for (const field of ['fromPageId', 'toPageId']) {
       string(action[field], `action ${action.id} ${field}`);
       if (!pageIds.has(action[field])) fail(`action ${action.id} ${field} references unknown page ${action[field]}`);

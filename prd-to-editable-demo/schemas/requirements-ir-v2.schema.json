@@ -41,11 +41,17 @@
     },
     "requirement": {
       "type": "object", "additionalProperties": false,
-      "required": ["id", "text", "sourceIds", "uiEligible", "taxonomyIds"],
+      "required": ["id", "text", "sourceIds", "uiEligible", "taxonomyIds", "targetIds", "certainty", "acceptanceCriteria"],
       "properties": {
         "id": { "$ref": "#/$defs/id" }, "text": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
         "sourceIds": { "$ref": "#/$defs/idArray" }, "uiEligible": { "type": "boolean" },
-        "taxonomyIds": { "$ref": "#/$defs/idArray" }
+        "taxonomyIds": { "$ref": "#/$defs/idArray" }, "targetIds": { "$ref": "#/$defs/idArray" },
+        "certainty": { "$ref": "#/$defs/certainty" },
+        "exactCopy": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
+        "componentType": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
+        "state": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
+        "visibleState": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
+        "acceptanceCriteria": { "type": "array", "items": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" } }
       }
     },
     "taxonomyNode": {
@@ -61,13 +67,20 @@
     "region": {
       "type": "object", "additionalProperties": false,
       "required": ["id", "pageId", "name"],
-      "properties": { "id": { "$ref": "#/$defs/id" }, "pageId": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" } }
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "pageId": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
+        "layout": { "type": "object", "additionalProperties": false, "properties": { "mode": { "$ref": "#/$defs/nonBlank" }, "alignment": { "$ref": "#/$defs/nonBlank" } } },
+        "position": { "type": "object", "additionalProperties": false, "properties": { "order": { "type": "integer", "minimum": 0 }, "anchor": { "$ref": "#/$defs/nonBlank" } } },
+        "behavior": { "type": "object", "additionalProperties": false, "properties": { "scroll": { "$ref": "#/$defs/nonBlank" }, "sticky": { "type": "boolean" } } },
+        "prominence": { "type": "object", "additionalProperties": false, "properties": { "level": { "$ref": "#/$defs/nonBlank" }, "rationale": { "$ref": "#/$defs/nonBlank" } } }
+      }
     },
     "action": {
       "type": "object", "additionalProperties": false,
-      "required": ["id", "name", "fromPageId", "toPageId", "regionId", "requirementIds"],
+      "required": ["id", "name", "trigger", "visibleFeedback", "stateChange", "fromPageId", "toPageId", "regionId", "requirementIds"],
       "properties": {
         "id": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
+        "trigger": { "$ref": "#/$defs/nonBlank" }, "visibleFeedback": { "$ref": "#/$defs/nonBlank" }, "stateChange": { "$ref": "#/$defs/nonBlank" },
         "fromPageId": { "$ref": "#/$defs/id" }, "toPageId": { "$ref": "#/$defs/id" },
         "regionId": { "$ref": "#/$defs/id" }, "requirementIds": { "$ref": "#/$defs/idArray" }
       }
@@ -81,6 +94,7 @@
         "startPageId": { "$ref": "#/$defs/id" }, "expectedEndPageId": { "$ref": "#/$defs/id" }
       }
     },
+    "nonBlank": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
     "blocker": {
       "type": "object", "additionalProperties": false,
       "required": ["id", "text", "certainty", "sourceIds", "requirementId"],

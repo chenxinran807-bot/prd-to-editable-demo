@@ -26,16 +26,16 @@ function validIr() {
       { quote: 'The save control must remain visible.', sourceIds: ['s3'] },
     ],
     requirements: [
-      { id: 'r1', text: 'Save an item', sourceIds: ['s1', 's3'], uiEligible: true, taxonomyIds: ['t-child'] },
-      { id: 'r2', text: 'Speed is important', sourceIds: ['s2'], uiEligible: false, taxonomyIds: ['t-root'] },
+      { id: 'r1', text: 'Save an item', exactCopy: 'Save this item', componentType: 'button', state: 'ready', visibleState: 'enabled', acceptanceCriteria: ['Control is visible'], certainty: 'explicit', targetIds: ['reg1'], sourceIds: ['s1', 's3'], uiEligible: true, taxonomyIds: ['t-child'] },
+      { id: 'r2', text: 'Speed is important', acceptanceCriteria: [], certainty: 'confirmed', targetIds: [], sourceIds: ['s2'], uiEligible: false, taxonomyIds: ['t-root'] },
     ],
     taxonomy: [
       { id: 't-root', label: 'Collection', parentId: null },
       { id: 't-child', label: 'Saving', parentId: 't-root' },
     ],
     pages: [{ id: 'p1', name: 'Detail', regionIds: ['reg1'] }],
-    regions: [{ id: 'reg1', pageId: 'p1', name: 'Primary' }],
-    actions: [{ id: 'a1', name: 'Save', fromPageId: 'p1', toPageId: 'p1', regionId: 'reg1', requirementIds: ['r1'] }],
+    regions: [{ id: 'reg1', pageId: 'p1', name: 'Primary', layout: { mode: 'stack', alignment: 'start' }, position: { order: 1, anchor: 'content' }, behavior: { scroll: 'page', sticky: false }, prominence: { level: 'primary', rationale: 'Core action' } }],
+    actions: [{ id: 'a1', name: 'Save', trigger: 'activate save control', visibleFeedback: 'Saved state appears', stateChange: 'item becomes saved', fromPageId: 'p1', toPageId: 'p1', regionId: 'reg1', requirementIds: ['r1'] }],
     coreJourneys: [{ id: 'j1', name: 'Save flow', actionIds: ['a1'], startPageId: 'p1', expectedEndPageId: 'p1' }],
     blockers: [{ id: 'b1', text: 'Persistence behavior is unspecified', certainty: 'missing', sourceIds: [], requirementId: 'r1' }],
   };
@@ -49,6 +49,10 @@ test('accepts and deep-copies a valid typed v2 IR while preserving hierarchy', (
   assert.notStrictEqual(result, input);
   assert.notStrictEqual(result.taxonomy[0], input.taxonomy[0]);
   assert.equal(result.taxonomy[1].parentId, 't-root');
+  assert.equal(result.requirements[0].exactCopy, 'Save this item');
+  assert.equal(result.requirements[0].componentType, 'button');
+  assert.equal(result.regions[0].position.order, 1);
+  assert.equal(result.actions[0].visibleFeedback, 'Saved state appears');
   assert.deepEqual(input, before);
 });
 
@@ -64,7 +68,7 @@ test('accepts exact multi-line CRLF evidence when checking semantic block covera
   const input = validIr();
   input.sourceUnits = [{ id: 's1', purpose: 'product_requirement', certainty: 'explicit', quote }];
   input.sourceCoverage = [{ quote, sourceIds: ['s1'] }];
-  input.requirements = [{ id: 'r1', text: 'Save an item', sourceIds: ['s1'], uiEligible: true, taxonomyIds: ['t-child'] }];
+  input.requirements = [{ id: 'r1', text: 'Save an item', acceptanceCriteria: [], certainty: 'explicit', targetIds: ['reg1'], sourceIds: ['s1'], uiEligible: true, taxonomyIds: ['t-child'] }];
   input.actions[0].requirementIds = ['r1'];
   input.blockers[0].sourceIds = [];
   assert.doesNotThrow(() => validateRequirementsIrV2(input, crlfSource));
@@ -80,6 +84,19 @@ test('rejects background or research evidence marked UI eligible', () => {
   const input = validIr();
   input.requirements[1].uiEligible = true;
   assert.throws(() => validateRequirementsIrV2(input, source), /product_requirement source/i);
+});
+
+test('requires visible requirements to have real targets and validates new metadata strictly', () => {
+  const missingTargets = validIr(); missingTargets.requirements[0].targetIds = [];
+  assert.throws(() => validateRequirementsIrV2(missingTargets, source), /UI-eligible.*target/i);
+  const unknownTarget = validIr(); unknownTarget.requirements[0].targetIds = ['missing'];
+  assert.throws(() => validateRequirementsIrV2(unknownTarget, source), /unknown target missing/i);
+  const blankCopy = validIr(); blankCopy.requirements[0].exactCopy = '   ';
+  assert.throws(() => validateRequirementsIrV2(blankCopy, source), /exactCopy.*non-empty/i);
+  const badOrder = validIr(); badOrder.regions[0].position.order = -1;
+  assert.throws(() => validateRequirementsIrV2(badOrder, source), /order.*non-negative integer/i);
+  const blankFeedback = validIr(); blankFeedback.actions[0].visibleFeedback = ' ';
+  assert.throws(() => validateRequirementsIrV2(blankFeedback, source), /visibleFeedback.*non-empty/i);
 });
 
 test('rejects a source quote that is absent from the PRD', () => {

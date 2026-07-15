@@ -25,11 +25,11 @@
   "schemaVersion": 2,
   "sourceUnits": [{"id":"s1","purpose":"product_requirement","certainty":"explicit","quote":"Submit opens the receipt"}],
   "sourceCoverage": [{"quote":"Submit opens the receipt","sourceIds":["s1"]}],
-  "requirements": [{"id":"r1","text":"Open receipt","sourceIds":["s1"],"uiEligible":true,"taxonomyIds":["t1"]}],
+  "requirements": [{"id":"r1","text":"Open receipt","exactCopy":"Open receipt","componentType":"button","state":"ready","visibleState":"enabled","acceptanceCriteria":["Receipt becomes visible"],"certainty":"explicit","targetIds":["g1"],"sourceIds":["s1"],"uiEligible":true,"taxonomyIds":["t1"]}],
   "taxonomy": [{"id":"t1","label":"Request","parentId":null}],
   "pages": [{"id":"p1","name":"Form","regionIds":["g1"]},{"id":"p2","name":"Receipt","regionIds":[]}],
-  "regions": [{"id":"g1","pageId":"p1","name":"Actions"}],
-  "actions": [{"id":"a1","name":"Submit","fromPageId":"p1","toPageId":"p2","regionId":"g1","requirementIds":["r1"]}],
+  "regions": [{"id":"g1","pageId":"p1","name":"Actions","layout":{"mode":"stack","alignment":"start"},"position":{"order":0,"anchor":"content"},"behavior":{"scroll":"page","sticky":false},"prominence":{"level":"primary","rationale":"Core task"}}],
+  "actions": [{"id":"a1","name":"Submit","trigger":"activate submit","visibleFeedback":"Receipt appears","stateChange":"request becomes submitted","fromPageId":"p1","toPageId":"p2","regionId":"g1","requirementIds":["r1"]}],
   "coreJourneys": [{"id":"j1","name":"Submit request","actionIds":["a1"],"startPageId":"p1","expectedEndPageId":"p2"}],
   "blockers": []
 }

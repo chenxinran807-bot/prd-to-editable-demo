@@ -35,8 +35,10 @@ type: workflow
 统一入口：
 
 ```bash
-node bin/prd-to-editable-demo.mjs --prd <prd-path> --requirements <requirements-ir.json> --out <output-directory>
+node bin/prd-to-editable-demo.mjs --prd <prd-path> --requirements-v2 <requirements-ir-v2.json> --confirmations <answers.json> --visual-references <visual-reference-manifest.json> --out <output-directory>
 ```
+
+没有待确认项或图片参考时，分别省略 `--confirmations` 或 `--visual-references`；`--requirements-v2` 是本 workflow 的强制入口。`--requirements` 仅为旧版兼容参数，不激活本保真 workflow。
 
 宿主以 `model-semantic` 建立需求模型，明确业务对象并保存逐字原文证据；启发式解析只允许作为低置信兜底，不得以领域词表替代核心理解。关键证据不足时必须澄清，不得静默降级。专业接管信号写入 `specialist-handoff.json`。
 

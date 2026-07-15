@@ -34,12 +34,16 @@ for file in "${required_files[@]}"; do
   fi
 done
 
-zip -qr "$OUT" . \
-  -x 'node_modules/*' \
-  -x 'dist/*' \
-  -x '.git/*' \
-  -x 'inspire-business-skill/*' \
-  -x 'inspire-business-skill-release/*'
+STAGE="$(mktemp -d "${TMPDIR:-/tmp}/prd-to-editable-demo-package.XXXXXX")"
+trap 'rm -rf "$STAGE"' EXIT
+
+# Runtime allowlist. Nothing outside these paths can enter the release archive.
+cp 'SKILL.md' 'package.json' "$STAGE/"
+for directory in agents bin src references schemas; do
+  cp -R "$directory" "$STAGE/$directory"
+done
+
+(cd "$STAGE" && zip -qr "$OUT" .)
 
 if ! unzip -l "$OUT" | awk '{print $NF}' | grep -qx 'SKILL.md'; then
   echo "Package validation failed: SKILL.md must be at ZIP root" >&2

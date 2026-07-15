@@ -35,12 +35,12 @@ function writeV2Fixture(root, { blockers = [], background = true } = {}) {
       { quote: background ? 'Internal research context must not appear in the interface.' : 'The result must be visible.', sourceIds: ['s2'] }
     ],
     requirements: [
-      { id: 'r1', text: 'Submit request', sourceIds: ['s1'], uiEligible: true, taxonomyIds: [] },
-      { id: 'r2', text: background ? 'Internal research context must not appear in the interface.' : 'Show result', sourceIds: ['s2'], uiEligible: !background, taxonomyIds: [] }
+      { id: 'r1', text: 'Submit request', exactCopy: 'Submit exactly', componentType: 'button', state: 'ready', visibleState: 'enabled', acceptanceCriteria: ['Submission is reachable'], certainty: 'explicit', targetIds: ['primary'], sourceIds: ['s1'], uiEligible: true, taxonomyIds: [] },
+      { id: 'r2', text: background ? 'Internal research context must not appear in the interface.' : 'Show result', acceptanceCriteria: [], certainty: 'explicit', targetIds: background ? [] : ['main'], sourceIds: ['s2'], uiEligible: !background, taxonomyIds: [] }
     ], taxonomy: [],
     pages: [{ id: 'main', name: 'Request', regionIds: ['primary'] }],
     regions: [{ id: 'primary', pageId: 'main', name: 'Primary' }],
-    actions: [{ id: 'submit', name: 'Submit', fromPageId: 'main', toPageId: 'main', regionId: 'primary', requirementIds: ['r1'] }],
+    actions: [{ id: 'submit', name: 'Submit', trigger: 'activate submit', visibleFeedback: 'submitted state appears', stateChange: 'request becomes submitted', fromPageId: 'main', toPageId: 'main', regionId: 'primary', requirementIds: ['r1'] }],
     coreJourneys: [{ id: 'journey', name: 'Submit', actionIds: ['submit'], startPageId: 'main', expectedEndPageId: 'main' }],
     blockers
   }));

@@ -74,15 +74,16 @@ export function executionBaselineToModel(baseline, product) {
       .map(({ requirement }) => requirement);
     const elements = requirements.map((requirement) => ({
       key: `${page.id}.requirement.${requirement.id}`,
-      type: 'heading',
+      type: requirement.componentType ?? 'heading',
       text: requirement.exactCopy ?? requirement.text,
       editable: ['text', 'style'],
       requirementId: requirement.id,
       regionId: requirement.targetIds.find((id) => regionRank.has(id)),
       sourceIds: structuredClone(requirement.sourceIds ?? []),
       certainty: requirement.certainty,
-      evidence: structuredClone(requirement.evidence ?? []),
-      acceptance: structuredClone(requirement.acceptance ?? []),
+      state: requirement.state,
+      visibleState: requirement.visibleState,
+      acceptanceCriteria: structuredClone(requirement.acceptanceCriteria ?? []),
       requirement: structuredClone(requirement),
     }));
     for (const action of page.actions) {
@@ -93,6 +94,10 @@ export function executionBaselineToModel(baseline, product) {
         editable: ['text', 'style', 'hidden', 'disabled', 'action'],
         actionId: action.id,
         regionId: action.regionId,
+        trigger: action.trigger,
+        visibleFeedback: action.visibleFeedback,
+        stateChange: action.stateChange,
+        requirementIds: structuredClone(action.requirementIds ?? []),
         action: { type: 'navigate', target: action.toPageId },
       });
     }
