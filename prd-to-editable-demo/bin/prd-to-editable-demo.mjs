@@ -5,10 +5,14 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { analyzeRequirements, parsePrd } from '../src/parse-prd.mjs';
 import { validateSemanticRequirements } from '../src/semantic-requirements.mjs';
-import { semanticRequirementsToModel } from '../src/semantic-to-model.mjs';
+import { executionBaselineToModel, semanticRequirementsToModel } from '../src/semantic-to-model.mjs';
 import { selectRoute } from '../src/select-route.mjs';
 import { renderDemo } from '../src/render-demo.mjs';
 import { writeOutput } from '../src/write-output.mjs';
+import { validateRequirementsIrV2 } from '../src/requirements-ir-v2.mjs';
+import { buildClarificationTurn, applyClarifications } from '../src/clarification.mjs';
+import { validateVisualReferences } from '../src/visual-references.mjs';
+import { compileExecutionBaseline } from '../src/execution-baseline.mjs';
 
 export function parseArgs(argv) {
   const options = { assets: [] };
@@ -20,6 +24,9 @@ export function parseArgs(argv) {
     else if (token === '--intent') options.intent = argv[++index];
     else if (token === '--url') options.url = argv[++index];
     else if (token === '--requirements') options.requirements = argv[++index];
+    else if (token === '--requirements-v2') options.requirementsV2 = argv[++index];
+    else if (token === '--confirmations') options.confirmations = argv[++index];
+    else if (token === '--visual-references') options.visualReferences = argv[++index];
   }
   return options;
 }
@@ -27,16 +34,61 @@ export function parseArgs(argv) {
 export async function main(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
   if (!options.prd || !options.out) {
-    process.stderr.write('Usage: prd-to-editable-demo --prd <path> --out <directory> [--requirements <semantic-ir.json>] [--asset <path>] [--intent <text>] [--url <url>]\n');
+    process.stderr.write('Usage: prd-to-editable-demo --prd <path> --out <directory> [--requirements <semantic-ir.json>] [--requirements-v2 <requirements-ir-v2.json>] [--confirmations <answers.json>] [--visual-references <references.json>] [--asset <path>] [--intent <text>] [--url <url>]\n');
     return 2;
   }
   const source = await readFile(resolve(options.prd), 'utf8');
+  const readJson = async (path, label) => {
+    const resolved = resolve(path);
+    let text;
+    try { text = await readFile(resolved, 'utf8'); } catch (error) { throw new Error(`Cannot read ${label} at ${resolved}: ${error.message}`); }
+    try { return JSON.parse(text); } catch (error) { throw new Error(`Cannot parse ${label} at ${resolved}: ${error.message}`); }
+  };
+  let v2Context = null;
+  if (options.requirementsV2) {
+    let ir = validateRequirementsIrV2(await readJson(options.requirementsV2, 'requirements v2'), source);
+    const enrichBlockers = value => ({
+      ...value,
+      requirements: value.requirements.map(requirement => ({
+        ...requirement,
+        targetIds: [...new Set(value.actions.filter(action => action.requirementIds.includes(requirement.id)).map(action => action.regionId ?? action.fromPageId))]
+          .concat(value.actions.some(action => action.requirementIds.includes(requirement.id)) ? [] : [value.pages[0]?.id]).filter(Boolean),
+        certainty: value.sourceUnits.find(unit => requirement.sourceIds.includes(unit.id))?.certainty ?? 'explicit',
+        evidence: requirement.sourceIds.map(id => ({ quote: value.sourceUnits.find(unit => unit.id === id)?.quote })).filter(item => item.quote),
+        acceptance: []
+      })),
+      blockers: value.blockers.map((blocker) => ({
+        ...blocker, theme: 'requirements', priority: blocker.certainty === 'conflicting' ? 'P0' : 'P1',
+        requirementId: value.requirements[0]?.id, question: blocker.text
+      }))
+    });
+    const confirmations = options.confirmations ? await readJson(options.confirmations, 'confirmations') : [];
+    ir = enrichBlockers(ir);
+    if (confirmations.length) ir = applyClarifications(ir, confirmations);
+    const turn = buildClarificationTurn(ir.blockers);
+    if (turn) {
+      const output = resolve(options.out);
+      await rm(output, { recursive: true, force: true });
+      await mkdir(output, { recursive: true });
+      await writeFile(`${output}/clarification-required.json`, `${JSON.stringify({
+        schemaVersion: 1, status: 'clarification-required', turn, remaining: ir.blockers.length,
+        resumeCommand: 'prd-to-editable-demo --requirements-v2 <requirements-ir-v2.json> --confirmations <answers.json>'
+      }, null, 2)}\n`);
+      process.stderr.write(`Requirements clarification required: ${turn.theme} (${turn.questions.length} questions, ${ir.blockers.length} remaining)\n`);
+      return 5;
+    }
+    const visualReferences = validateVisualReferences(options.visualReferences ? await readJson(options.visualReferences, 'visual references') : [], {
+      pageIds: ir.pages.map(({ id }) => id), regions: ir.regions.map(({ id, pageId }) => ({ id, pageId }))
+    });
+    const baseline = compileExecutionBaseline(ir, visualReferences);
+    v2Context = { ir, baseline, visualReferences, confirmations };
+  }
   const requirementsPath = options.requirements ? resolve(options.requirements) : null;
-  const requirements = requirementsPath
+  const requirements = v2Context ? v2Context.ir : requirementsPath
     ? validateSemanticRequirements(JSON.parse(await readFile(requirementsPath, 'utf8')), source)
     : analyzeRequirements(source);
   const route = selectRoute({ intent: options.intent, assets: options.assets, source, url: options.url });
-  if (route.deliveryMode === 'professional') {
+  if (route.deliveryMode === 'professional' && !v2Context) {
     const missing = ['screens', 'transitions'].filter(field => !Array.isArray(requirements[field]) || requirements[field].length === 0);
     if (missing.length) {
       const output = resolve(options.out);
@@ -65,7 +117,9 @@ export async function main(argv = process.argv.slice(2)) {
       schemaVersion: 1,
       routing: { selected: route.id, stages, reason: route.reason, handoff: stages.map(id => `use-${id}-skill`).join('-then-'), status: 'required' },
       requirements,
-      inputs: { prd: resolve(options.prd), semanticRequirements: requirementsPath, assets: options.assets.map(asset => resolve(asset)), referenceUrl: options.url ?? null },
+      executionBaseline: v2Context?.baseline,
+      visualReferences: v2Context?.visualReferences,
+      inputs: { prd: resolve(options.prd), semanticRequirements: requirementsPath, requirementsV2: options.requirementsV2 ? resolve(options.requirementsV2) : null, assets: options.assets.map(asset => resolve(asset)), referenceUrl: options.url ?? null },
       qualityAssurance: { mode: route.deliveryMode, finalContainer: 'inspire', silentDowngradeAllowed: false, readiness: 'preflight-required' },
       specialistPlan,
       specialistBaseline,
@@ -87,12 +141,25 @@ export async function main(argv = process.argv.slice(2)) {
     process.stderr.write(`需要执行 ${stages.join(' → ')}，已生成交接包：${route.reason}\n`);
     return 3;
   }
-  const manifest = requirementsPath ? semanticRequirementsToModel(requirements) : parsePrd(source);
+  const parsed = parsePrd(source);
+  const manifest = v2Context ? executionBaselineToModel(v2Context.baseline, parsed.product)
+    : requirementsPath ? semanticRequirementsToModel(requirements) : parsed;
+  if (v2Context) {
+    manifest.requirements = v2Context.ir;
+    manifest.assumptions = [];
+    manifest.gaps = [];
+    manifest.appliedVisualReferences = v2Context.visualReferences.map(reference => {
+      const page = manifest.pages.find(({ id }) => id === reference.scope.pageId);
+      const candidates = (page?.elements ?? []).filter(element => reference.scope.regionId === undefined || element.regionId === reference.scope.regionId);
+      return { ...reference, elementKeys: candidates.map(({ key }) => key),
+        ...(reference.bindings.some(({ fidelity }) => ['high', 'local', 'inspiration'].includes(fidelity)) ? { subjectiveReview: 'required' } : {}) };
+    });
+  }
   manifest.delivery = { mode: route.deliveryMode, formal: false };
   manifest.routing = { selected: route.id, reason: route.reason, handoff: route.id === 'local' ? 'local-fast-path' : `use-${route.id}-skill` };
   if (route.id !== 'local') manifest.assumptions.push({ id: 'route-fallback', statement: `专业路径 ${route.id} 尚未接入，使用本地生成`, source: 'router' });
   const html = renderDemo(manifest);
-  const result = await writeOutput({ outDir: options.out, html, manifest });
+  const result = await writeOutput({ outDir: options.out, html, manifest, context: v2Context });
   process.stdout.write(`${result.output}/index.html\n`);
   return 0;
 }

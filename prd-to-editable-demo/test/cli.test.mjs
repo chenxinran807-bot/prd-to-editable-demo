@@ -14,6 +14,70 @@ test('prints usage when required arguments are missing', () => {
   assert.equal(result.status, 2);
   assert.match(result.stderr, /--prd <path>/);
   assert.match(result.stderr, /--out <directory>/);
+  assert.match(result.stderr, /--requirements-v2/);
+  assert.match(result.stderr, /--confirmations/);
+  assert.match(result.stderr, /--visual-references/);
+});
+
+function writeV2Fixture(root, { blockers = [], background = true } = {}) {
+  const source = `# Workflow\n\nPeople submit a request.\n\n${background ? 'Internal research context must not appear in the interface.' : 'The result must be visible.'}`;
+  const prd = join(root, 'prd.md');
+  const requirements = join(root, 'requirements-v2.json');
+  writeFileSync(prd, source);
+  writeFileSync(requirements, JSON.stringify({
+    schemaVersion: 2,
+    sourceUnits: [
+      { id: 's1', purpose: 'product_requirement', certainty: 'explicit', quote: 'People submit a request.' },
+      { id: 's2', purpose: background ? 'business_context' : 'product_requirement', certainty: 'explicit', quote: background ? 'Internal research context must not appear in the interface.' : 'The result must be visible.' }
+    ],
+    sourceCoverage: [
+      { quote: 'People submit a request.', sourceIds: ['s1'] },
+      { quote: background ? 'Internal research context must not appear in the interface.' : 'The result must be visible.', sourceIds: ['s2'] }
+    ],
+    requirements: [
+      { id: 'r1', text: 'Submit request', sourceIds: ['s1'], uiEligible: true, taxonomyIds: [] },
+      { id: 'r2', text: background ? 'Internal research context must not appear in the interface.' : 'Show result', sourceIds: ['s2'], uiEligible: !background, taxonomyIds: [] }
+    ], taxonomy: [],
+    pages: [{ id: 'main', name: 'Request', regionIds: ['primary'] }],
+    regions: [{ id: 'primary', pageId: 'main', name: 'Primary' }],
+    actions: [{ id: 'submit', name: 'Submit', fromPageId: 'main', toPageId: 'main', regionId: 'primary', requirementIds: ['r1'] }],
+    coreJourneys: [{ id: 'journey', name: 'Submit', actionIds: ['submit'], startPageId: 'main', expectedEndPageId: 'main' }],
+    blockers
+  }));
+  return { prd, requirements };
+}
+
+test('v2 blocker removes stale output and emits a bounded clarification artifact', () => {
+  const root = mkdtempSync(join(tmpdir(), 'v2-blocker-'));
+  const { prd, requirements } = writeV2Fixture(root, { blockers: [
+    { id: 'b1', text: 'Choose persistence behavior', certainty: 'missing', sourceIds: [] },
+    { id: 'b2', text: 'Choose retry behavior', certainty: 'missing', sourceIds: [] },
+    { id: 'b3', text: 'Choose completion behavior', certainty: 'missing', sourceIds: [] },
+    { id: 'b4', text: 'Choose cancellation behavior', certainty: 'missing', sourceIds: [] }
+  ] });
+  const out = join(root, 'out'); mkdirSync(out); writeFileSync(join(out, 'index.html'), 'stale');
+  const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--out', out], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+  assert.equal(result.status, 5, result.stderr);
+  assert.throws(() => readFileSync(join(out, 'index.html'), 'utf8'));
+  const blocker = JSON.parse(readFileSync(join(out, 'clarification-required.json'), 'utf8'));
+  assert.equal(blocker.status, 'clarification-required');
+  assert.equal(blocker.turn.questions.length, 3);
+  assert.equal(blocker.remaining, 4);
+  assert.equal(JSON.stringify(blocker).includes('sourceCoverage'), false);
+});
+
+test('confirmed v2 local generation writes fidelity artifacts and excludes background copy', () => {
+  const root = mkdtempSync(join(tmpdir(), 'v2-local-'));
+  const { prd, requirements } = writeV2Fixture(root);
+  const out = join(root, 'out');
+  const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--intent', '快速评审初版，优先速度', '--out', out], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  for (const name of ['prd-source-map.json', 'requirements-ir.json', 'page-flow-graph.json', 'visual-reference-manifest.json', 'confirmation-record.json', 'requirements-baseline.json', 'traceability-matrix.json', 'fidelity-report.md']) assert.ok(readFileSync(join(out, name), 'utf8').length);
+  const manifest = JSON.parse(readFileSync(join(out, 'prototype.manifest.json'), 'utf8'));
+  assert.ok(manifest.executionBaseline);
+  assert.equal(manifest.pages.flatMap(page => page.elements).some(element => /Internal research context/.test(element.text)), false);
+  assert.match(readFileSync(join(out, 'fidelity-report.md'), 'utf8'), /passed/);
+  assert.match(readFileSync(join(out, 'fidelity-report.md'), 'utf8'), /requirements/);
 });
 
 test('generates the complete editable demo deliverable', () => {
