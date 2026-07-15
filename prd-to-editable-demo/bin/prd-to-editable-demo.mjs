@@ -13,6 +13,7 @@ import { validateRequirementsIrV2 } from '../src/requirements-ir-v2.mjs';
 import { buildClarificationTurn, applyClarifications } from '../src/clarification.mjs';
 import { validateVisualReferences } from '../src/visual-references.mjs';
 import { compileExecutionBaseline } from '../src/execution-baseline.mjs';
+import { verifyFidelity } from '../src/fidelity-verifier.mjs';
 
 export function parseArgs(argv) {
   const options = { assets: [] };
@@ -62,9 +63,13 @@ export async function main(argv = process.argv.slice(2)) {
         requirementId: value.requirements[0]?.id, question: blocker.text
       }))
     });
-    const confirmations = options.confirmations ? await readJson(options.confirmations, 'confirmations') : [];
+    const ensureArray = (value, label) => {
+      if (!Array.isArray(value)) throw new TypeError(`${label} must be an array`);
+      return value;
+    };
+    const confirmations = ensureArray(options.confirmations ? await readJson(options.confirmations, 'confirmations') : [], 'confirmations');
     ir = enrichBlockers(ir);
-    if (confirmations.length) ir = applyClarifications(ir, confirmations);
+    ir = applyClarifications(ir, confirmations);
     const turn = buildClarificationTurn(ir.blockers);
     if (turn) {
       const output = resolve(options.out);
@@ -77,7 +82,8 @@ export async function main(argv = process.argv.slice(2)) {
       process.stderr.write(`Requirements clarification required: ${turn.theme} (${turn.questions.length} questions, ${ir.blockers.length} remaining)\n`);
       return 5;
     }
-    const visualReferences = validateVisualReferences(options.visualReferences ? await readJson(options.visualReferences, 'visual references') : [], {
+    const visualInput = ensureArray(options.visualReferences ? await readJson(options.visualReferences, 'visual references') : [], 'visual references');
+    const visualReferences = validateVisualReferences(visualInput, {
       pageIds: ir.pages.map(({ id }) => id), regions: ir.regions.map(({ id, pageId }) => ({ id, pageId }))
     });
     const baseline = compileExecutionBaseline(ir, visualReferences);
@@ -159,6 +165,21 @@ export async function main(argv = process.argv.slice(2)) {
   manifest.routing = { selected: route.id, reason: route.reason, handoff: route.id === 'local' ? 'local-fast-path' : `use-${route.id}-skill` };
   if (route.id !== 'local') manifest.assumptions.push({ id: 'route-fallback', statement: `专业路径 ${route.id} 尚未接入，使用本地生成`, source: 'router' });
   const html = renderDemo(manifest);
+  if (v2Context) {
+    const verified = verifyFidelity({ baseline: v2Context.baseline, model: manifest });
+    const reviewRequired = verified.checks.some(check => check.reviewRequired);
+    const pageByRegion = new Map(v2Context.ir.regions.map(region => [region.id, region.pageId]));
+    v2Context.fidelity = {
+      ...verified,
+      status: reviewRequired ? 'review-required' : verified.status,
+      traceability: verified.traceability.map(item => ({
+        ...item,
+        sourceIds: item.kind === 'requirement' ? v2Context.ir.requirements.find(requirement => requirement.id === item.id)?.sourceIds ?? [] : [],
+        targetIds: item.kind === 'requirement' ? v2Context.ir.requirements.find(requirement => requirement.id === item.id)?.targetIds ?? [] : [],
+        regions: item.kind === 'requirement' ? (v2Context.ir.requirements.find(requirement => requirement.id === item.id)?.targetIds ?? []).filter(id => pageByRegion.has(id)) : []
+      }))
+    };
+  }
   const result = await writeOutput({ outDir: options.out, html, manifest, context: v2Context });
   process.stdout.write(`${result.output}/index.html\n`);
   return 0;

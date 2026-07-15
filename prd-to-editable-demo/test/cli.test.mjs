@@ -80,6 +80,52 @@ test('confirmed v2 local generation writes fidelity artifacts and excludes backg
   assert.match(readFileSync(join(out, 'fidelity-report.md'), 'utf8'), /requirements/);
 });
 
+test('rejects malformed confirmations and visual references as arrays', () => {
+  for (const [flag, name, value] of [
+    ['--confirmations', 'confirmations', {}], ['--confirmations', 'confirmations', null],
+    ['--confirmations', 'confirmations', 'invalid'], ['--visual-references', 'visual references', {}],
+    ['--visual-references', 'visual references', null]
+  ]) {
+    const root = mkdtempSync(join(tmpdir(), 'v2-malformed-'));
+    const { prd, requirements } = writeV2Fixture(root);
+    const input = join(root, 'input.json'); writeFileSync(input, JSON.stringify(value));
+    const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, flag, input, '--out', join(root, 'out')], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, new RegExp(`${name}.*array`, 'i'));
+  }
+});
+
+test('v2 professional handoff carries the frozen baseline and visual contracts', () => {
+  const root = mkdtempSync(join(tmpdir(), 'v2-handoff-'));
+  const { prd, requirements } = writeV2Fixture(root);
+  const visuals = join(root, 'visuals.json');
+  writeFileSync(visuals, JSON.stringify([{ id: 'ref-1', asset: 'screen.png', scope: { pageId: 'main', regionId: 'primary' }, bindings: [{ property: 'layout', fidelity: 'high' }], exclude: [] }]));
+  const out = join(root, 'out');
+  const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--visual-references', visuals, '--intent', '原生高保真', '--out', out], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+  assert.equal(result.status, 3, result.stderr);
+  const handoff = JSON.parse(readFileSync(join(out, 'specialist-handoff.json'), 'utf8'));
+  assert.equal(handoff.executionBaseline.pages[0].visualReferences[0].id, 'ref-1');
+  assert.equal(handoff.visualReferences[0].bindings[0].fidelity, 'high');
+  assert.equal(handoff.fidelity, undefined);
+});
+
+test('fidelity artifacts use the actual subjective-review verification result', () => {
+  const root = mkdtempSync(join(tmpdir(), 'v2-review-'));
+  const { prd, requirements } = writeV2Fixture(root);
+  const visuals = join(root, 'visuals.json');
+  writeFileSync(visuals, JSON.stringify([{ id: 'ref-1', asset: 'screen.png', scope: { pageId: 'main', regionId: 'primary' }, bindings: [{ property: 'layout', fidelity: 'high' }], exclude: [] }]));
+  const out = join(root, 'out');
+  const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--visual-references', visuals, '--intent', '快速评审初版，优先速度', '--out', out], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  const report = readFileSync(join(out, 'fidelity-report.md'), 'utf8');
+  const matrix = JSON.parse(readFileSync(join(out, 'traceability-matrix.json'), 'utf8'));
+  assert.match(report, /Status: review-required/);
+  assert.match(report, /visual references.*subjective review required/i);
+  assert.equal(matrix.status, 'review-required');
+  assert.equal(matrix.checks.find(check => check.name === 'visual references').reviewRequired, true);
+  assert.ok(matrix.traceability.some(item => item.kind === 'visual-reference' && item.id === 'ref-1'));
+});
+
 test('generates the complete editable demo deliverable', () => {
   const out = join(mkdtempSync(join(tmpdir(), 'editable-demo-')), 'output');
   const result = spawnSync(process.execPath, [

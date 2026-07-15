@@ -1,7 +1,7 @@
 import { validateModel } from './validate-model.mjs';
 import { verifyFidelity } from './fidelity-verifier.mjs';
 
-export function verifyDemo({ html, manifest }) {
+export function verifyDemo({ html, manifest, fidelity }) {
   validateModel(manifest);
   const visibleCopy = manifest.pages.flatMap(page => [page.title, ...(page.elements ?? []).map(element => element.text)]).join('\n');
   const buttons = manifest.pages.flatMap(page => page.elements ?? []).filter(element => element.type === 'button');
@@ -48,7 +48,8 @@ export function verifyDemo({ html, manifest }) {
   }
   const results = checks.map(([name]) => ({ name, passed: true }));
   if (manifest.executionBaseline) {
-    results.push(...verifyFidelity({ baseline: manifest.executionBaseline, model: manifest }).checks);
+    const result = fidelity ?? verifyFidelity({ baseline: manifest.executionBaseline, model: manifest });
+    results.push(...result.checks);
   }
   return results;
 }
