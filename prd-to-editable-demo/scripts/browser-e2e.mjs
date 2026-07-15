@@ -45,6 +45,17 @@ function localServer(outputDir) {
   });
 }
 
+export function createLocalDeliveryLifecycle({ outputDir }) {
+  const server = localServer(outputDir);
+  return {
+    async start() {
+      await listen(server);
+      return `http://127.0.0.1:${server.address().port}/index.html`;
+    },
+    async close() { await closeServer(server); },
+  };
+}
+
 async function launchDeliveryBrowser(browserFactory) {
   if (browserFactory) return browserFactory();
   try {
@@ -56,21 +67,17 @@ async function launchDeliveryBrowser(browserFactory) {
 }
 
 /** Verify the frozen baseline's core journeys against the final delivered entry. */
-export async function verifyFinalDeliverableJourneys({ outputDir, url, baseline, browserFactory } = {}) {
+export async function verifyFinalDeliverableJourneys({ outputDir, url, baseline, browserFactory, localUrlFactory = createLocalDeliveryLifecycle } = {}) {
   if (Boolean(outputDir) === Boolean(url)) throw new TypeError('Provide exactly one of outputDir or url');
   if (!baseline || !Array.isArray(baseline.coreJourneys) || !Array.isArray(baseline.actions)) throw new TypeError('A baseline with actions and coreJourneys is required');
-  let server;
   let entryUrl;
+  let localLifecycle;
   const mode = outputDir ? 'local' : 'url';
   if (url) {
     let parsed;
     try { parsed = new URL(url); } catch { throw new TypeError('Delivery URL must use HTTP/HTTPS'); }
     if (!['http:', 'https:'].includes(parsed.protocol)) throw new TypeError('Delivery URL must use HTTP/HTTPS');
     entryUrl = parsed.href;
-  } else {
-    server = localServer(outputDir);
-    await listen(server);
-    entryUrl = `http://127.0.0.1:${server.address().port}/index.html`;
   }
   let browser;
   let page;
@@ -84,6 +91,11 @@ export async function verifyFinalDeliverableJourneys({ outputDir, url, baseline,
     },
   };
   try {
+    if (outputDir) {
+      localLifecycle = await localUrlFactory({ outputDir });
+      if (!localLifecycle || typeof localLifecycle.start !== 'function' || typeof localLifecycle.close !== 'function') throw new TypeError('localUrlFactory must return start/close lifecycle');
+      entryUrl = await localLifecycle.start();
+    }
     browser = await launchDeliveryBrowser(browserFactory);
     page = await browser.newPage();
     page.setDefaultTimeout?.(5000);
@@ -134,7 +146,7 @@ export async function verifyFinalDeliverableJourneys({ outputDir, url, baseline,
       await page.close?.();
     }
     await browser?.close?.();
-    await closeServer(server);
+    await localLifecycle?.close?.();
   }
 }
 
