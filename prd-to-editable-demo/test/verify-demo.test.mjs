@@ -78,3 +78,42 @@ test('accepts compound ecommerce states when semantic page states or visible evi
   };
   assert.doesNotThrow(() => verifyDemo({ html: renderDemo(manifest), manifest }));
 });
+
+function baselineManifest() {
+  const executionBaseline = {
+    taxonomy: [],
+    coreJourneys: [{ id: 'flow', startPageId: 'start', actionIds: ['go'], expectedEndPageId: 'done' }],
+    pages: [
+      { id: 'start', name: 'Start', regions: [], requirements: [], visualReferences: [], actions: [{ id: 'go', fromPageId: 'start', toPageId: 'done' }] },
+      { id: 'done', name: 'Done', regions: [], requirements: [], visualReferences: [], actions: [] },
+    ],
+  };
+  return {
+    schemaVersion: 1, id: 'baseline', product: { name: 'Flow' }, persona: { name: 'User' },
+    taxonomy: [], coreJourneys: structuredClone(executionBaseline.coreJourneys), executionBaseline,
+    requirements: { businessObjects: [], userActions: [], states: [] }, traceability: [], startPage: 'start',
+    pages: [
+      { id: 'start', title: 'Start', elements: [{ key: 'go', type: 'button', text: 'Go', actionId: 'go', action: { type: 'navigate', target: 'done' } }] },
+      { id: 'done', title: 'Done', elements: [] },
+    ],
+  };
+}
+
+test('keeps legacy verifyDemo checks unchanged without an execution baseline', () => {
+  const manifest = {
+    schemaVersion: 1, id: 'legacy', product: { name: 'Legacy' }, persona: { name: 'User' }, startPage: 'home',
+    requirements: { businessObjects: [], userActions: [], states: [] }, traceability: [],
+    pages: [{ id: 'home', title: 'Home', elements: [{ key: 'title', type: 'heading', text: 'Home' }] }],
+  };
+  const checks = verifyDemo({ html: renderDemo(manifest), manifest });
+  assert.equal(checks.length, 8);
+  assert.equal(checks.some(check => check.name === 'pages'), false);
+});
+
+test('includes execution baseline fidelity checks and propagates failures', () => {
+  const manifest = baselineManifest();
+  const checks = verifyDemo({ html: renderDemo(manifest), manifest });
+  assert.equal(checks.find(check => check.name === 'core journeys')?.passed, true);
+  manifest.pages[0].elements[0].action.target = 'start';
+  assert.throws(() => verifyDemo({ html: renderDemo(manifest), manifest }), /action go.*target done/i);
+});

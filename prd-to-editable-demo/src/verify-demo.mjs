@@ -1,4 +1,5 @@
 import { validateModel } from './validate-model.mjs';
+import { verifyFidelity } from './fidelity-verifier.mjs';
 
 export function verifyDemo({ html, manifest }) {
   validateModel(manifest);
@@ -45,5 +46,9 @@ export function verifyDemo({ html, manifest }) {
   for (const [name, pattern] of checks) {
     if (!pattern.test(html)) throw new Error(`quality check failed: ${name}`);
   }
-  return checks.map(([name]) => ({ name, passed: true }));
+  const results = checks.map(([name]) => ({ name, passed: true }));
+  if (manifest.executionBaseline) {
+    results.push(...verifyFidelity({ baseline: manifest.executionBaseline, model: manifest }).checks);
+  }
+  return results;
 }
