@@ -7,7 +7,7 @@ function escapeHtml(value = '') {
 }
 
 function renderElement(element) {
-  const attributes = `data-proto-key="${escapeHtml(element.key)}"${element.action ? ` data-action="${escapeHtml(JSON.stringify(element.action))}"` : ''}`;
+  const attributes = `data-proto-key="${escapeHtml(element.key)}"${element.actionId ? ` data-action-id="${escapeHtml(element.actionId)}"` : ''}${element.action ? ` data-action="${escapeHtml(JSON.stringify(element.action))}"` : ''}`;
   if (element.type === 'heading') return `<h2 ${attributes}>${escapeHtml(element.text)}</h2>`;
   return `<button class="primary-action" type="button" ${attributes}>${escapeHtml(element.text)}</button>`;
 }

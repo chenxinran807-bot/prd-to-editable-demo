@@ -15,6 +15,7 @@
     "smoke": "node scripts/smoke-example.mjs",
     "benchmark": "node scripts/run-benchmark.mjs",
     "test:browser": "node --input-type=module -e \"const m = await import('./scripts/browser-e2e.mjs'); console.log(JSON.stringify(await m.runBrowserE2E(), null, 2))\"",
+    "verify:delivery": "node scripts/browser-e2e.mjs --verify-delivery",
     "package": "bash scripts/package-skill.sh"
   }
 }

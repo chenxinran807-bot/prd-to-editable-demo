@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { extname, join, relative, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { parsePrd } from '../src/parse-prd.mjs';
@@ -12,6 +12,131 @@ import { finalizeSpecialistResult } from '../src/finalize-specialist.mjs';
 import { verifySpecialistRender } from '../src/verify-specialist-render.mjs';
 
 const require = createRequire(import.meta.url);
+
+function deliveryError(journey, action, page, message) {
+  return new Error(`Journey ${journey}${action ? ` action ${action}` : ''}${page ? ` page ${page}` : ''}: ${message}`);
+}
+
+async function listen(server) {
+  await new Promise((resolveListen, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => { server.off('error', reject); resolveListen(); });
+  });
+}
+
+async function closeServer(server) {
+  if (!server?.listening) return;
+  server.closeAllConnections?.();
+  await new Promise(resolveClose => server.close(resolveClose));
+}
+
+function localServer(outputDir) {
+  const root = resolve(outputDir);
+  return createServer(async (request, response) => {
+    try {
+      const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
+      const requested = resolve(root, `.${pathname === '/' ? '/index.html' : pathname}`);
+      if (relative(root, requested).startsWith('..')) { response.writeHead(403).end(); return; }
+      const body = await readFile(requested);
+      const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml' };
+      response.setHeader('content-type', types[extname(requested)] || 'application/octet-stream');
+      response.end(body);
+    } catch { response.writeHead(404).end(); }
+  });
+}
+
+async function launchDeliveryBrowser(browserFactory) {
+  if (browserFactory) return browserFactory();
+  try {
+    const { chromium } = require('playwright');
+    return chromium.launch({ headless: true });
+  } catch {
+    throw new Error('Final deliverable verification requires Playwright. Install it or provide browserFactory.');
+  }
+}
+
+/** Verify the frozen baseline's core journeys against the final delivered entry. */
+export async function verifyFinalDeliverableJourneys({ outputDir, url, baseline, browserFactory } = {}) {
+  if (Boolean(outputDir) === Boolean(url)) throw new TypeError('Provide exactly one of outputDir or url');
+  if (!baseline || !Array.isArray(baseline.coreJourneys) || !Array.isArray(baseline.actions)) throw new TypeError('A baseline with actions and coreJourneys is required');
+  let server;
+  let entryUrl;
+  const mode = outputDir ? 'local' : 'url';
+  if (url) {
+    let parsed;
+    try { parsed = new URL(url); } catch { throw new TypeError('Delivery URL must use HTTP/HTTPS'); }
+    if (!['http:', 'https:'].includes(parsed.protocol)) throw new TypeError('Delivery URL must use HTTP/HTTPS');
+    entryUrl = parsed.href;
+  } else {
+    server = localServer(outputDir);
+    await listen(server);
+    entryUrl = `http://127.0.0.1:${server.address().port}/index.html`;
+  }
+  let browser;
+  let page;
+  const runtimeFailures = [];
+  const handlers = {
+    pageerror: error => runtimeFailures.push(`page error: ${error?.message || error}`),
+    console: message => { if (message.type?.() === 'error') runtimeFailures.push(`console error: ${message.text?.() || message}`); },
+    requestfailed: request => {
+      const failedUrl = request.url?.() || '';
+      if (!/\/favicon\.ico(?:$|\?)/.test(failedUrl)) runtimeFailures.push(`failed request: ${failedUrl} ${request.failure?.()?.errorText || ''}`.trim());
+    },
+  };
+  try {
+    browser = await launchDeliveryBrowser(browserFactory);
+    page = await browser.newPage();
+    page.setDefaultTimeout?.(5000);
+    for (const [event, handler] of Object.entries(handlers)) page.on?.(event, handler);
+    const actionById = new Map(baseline.actions.map(action => [action.id, action]));
+    const checks = [];
+    for (const journey of baseline.coreJourneys) {
+      let activeActionId = null;
+      let currentPageId = journey.startPageId;
+      try {
+      runtimeFailures.length = 0;
+      await page.goto(entryUrl, { waitUntil: 'networkidle' });
+      if (runtimeFailures.length) throw deliveryError(journey.id, null, journey.startPageId, runtimeFailures.join('; '));
+      const start = page.locator(`[data-page-id="${journey.startPageId}"]:not([hidden])`);
+      if (await start.count() !== 1 || !await start.isVisible()) throw deliveryError(journey.id, null, journey.startPageId, 'start page is not uniquely visible');
+      checks.push(`${journey.id}:start:${currentPageId}`);
+      for (const actionId of journey.actionIds) {
+        activeActionId = actionId;
+        const action = actionById.get(actionId);
+        if (!action) throw deliveryError(journey.id, actionId, currentPageId, 'missing baseline action');
+        const control = page.locator(`[data-page-id="${currentPageId}"]:not([hidden]) [data-action-id="${actionId}"]`);
+        const count = await control.count();
+        if (count === 0) throw deliveryError(journey.id, actionId, currentPageId, 'missing action control');
+        if (count !== 1) throw deliveryError(journey.id, actionId, currentPageId, `duplicate action controls (${count})`);
+        if (!await control.isVisible()) throw deliveryError(journey.id, actionId, currentPageId, 'hidden action control');
+        if (!await control.isEnabled()) throw deliveryError(journey.id, actionId, currentPageId, 'disabled action control');
+        const kind = await control.getAttribute?.('data-kind');
+        if (kind === 'notice' || kind === 'static') throw deliveryError(journey.id, actionId, currentPageId, `${kind} action control is not interactive`);
+        await control.click();
+        if (runtimeFailures.length) throw deliveryError(journey.id, actionId, currentPageId, runtimeFailures.join('; '));
+        const target = page.locator(`[data-page-id="${action.toPageId}"]:not([hidden])`);
+        if (await target.count() !== 1 || !await target.isVisible()) throw deliveryError(journey.id, actionId, action.toPageId, 'expected target page is not uniquely visible');
+        const previous = page.locator(`[data-page-id="${currentPageId}"]:not([hidden])`);
+        if (currentPageId !== action.toPageId && await previous.count() !== 0) throw deliveryError(journey.id, actionId, currentPageId, 'previous page remains visible');
+        currentPageId = action.toPageId;
+        checks.push(`${journey.id}:${actionId}:${currentPageId}`);
+      }
+      if (currentPageId !== journey.expectedEndPageId) throw deliveryError(journey.id, null, currentPageId, `expected end page ${journey.expectedEndPageId}`);
+      } catch (error) {
+        if (String(error?.message).startsWith(`Journey ${journey.id}`)) throw error;
+        throw deliveryError(journey.id, activeActionId, currentPageId, error?.message || String(error));
+      }
+    }
+    return { status: 'passed', mode, journeys: baseline.coreJourneys.map(({ id }) => id), checks };
+  } finally {
+    if (page) {
+      for (const [event, handler] of Object.entries(handlers)) page.off?.(event, handler);
+      await page.close?.();
+    }
+    await browser?.close?.();
+    await closeServer(server);
+  }
+}
 
 async function readDownload(download) {
   return JSON.parse(await readFile(await download.path(), 'utf8'));
@@ -124,7 +249,17 @@ export async function runBrowserE2E() {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-  runBrowserE2E().then(result => process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)).catch(error => {
+  const delivery = process.argv.includes('--verify-delivery');
+  const operation = delivery
+    ? async () => {
+        const baselinePath = process.env.DELIVERY_BASELINE || process.argv.find(value => value.startsWith('--baseline='))?.slice(11) || 'execution-baseline.json';
+        const baseline = JSON.parse(await readFile(resolve(baselinePath), 'utf8'));
+        const suppliedUrl = process.env.DELIVERY_URL;
+        const suppliedOutput = process.env.DELIVERY_OUTPUT_DIR || process.argv.find(value => value.startsWith('--output-dir='))?.slice(13) || 'output';
+        return verifyFinalDeliverableJourneys({ ...(suppliedUrl ? { url: suppliedUrl } : { outputDir: suppliedOutput }), baseline });
+      }
+    : runBrowserE2E;
+  operation().then(result => process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)).catch(error => {
     process.stderr.write(`${error.stack || error.message}\n`);
     process.exitCode = 1;
   });
