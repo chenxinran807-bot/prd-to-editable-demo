@@ -48,17 +48,17 @@ function extractBullets(body) {
 }
 
 function extractActions(body) {
-  const quoted = [...body.matchAll(/(?:点击|选择|上传|拍照|提交|确认|删除|取消|返回|查看|编辑|刷新|重试|试穿|加购|创建|提供|标记)[^“「『\n]{0,8}[“「『](.+?)[”」』]/g)]
+  const quoted = [...body.matchAll(/(?:点击|选择|上传|拍照|提交|确认|删除|取消|返回|查看|编辑|刷新|重试|创建|提供|标记)[^“「『\n]{0,8}[“「『](.+?)[”」』]/g)]
     .map(match => cleanHeading(match[1]));
   if (quoted.length) return [...new Set(quoted)].filter(text => text.length >= 2 && text.length <= 24);
-  const verbs = [...body.matchAll(/(?:点击|选择|上传|拍照|提交|确认|删除|取消|返回|查看|编辑|刷新|重试|试穿|加购|标记)([^，。；\n]{0,12})/g)]
-    .flatMap(match => cleanHeading(match[0]).split(/并(?=(?:点击|选择|上传|拍照|提交|确认|删除|取消|返回|查看|编辑|刷新|重试|试穿|加购|标记))/g));
+  const verbs = [...body.matchAll(/(?:点击|选择|上传|拍照|提交|确认|删除|取消|返回|查看|编辑|刷新|重试|标记)([^，。；\n]{0,12})/g)]
+    .flatMap(match => cleanHeading(match[0]).split(/并(?=(?:点击|选择|上传|拍照|提交|确认|删除|取消|返回|查看|编辑|刷新|重试|标记))/g));
   return [...new Set(verbs)].filter(text => text.length >= 2 && text.length <= 24);
 }
 
-const ACTION_VERBS = ['创建', '上传', '拍照', '选择', '查看', '编辑', '提交', '确认', '删除', '取消', '返回', '刷新', '重试', '试穿', '加购', '搜索', '筛选', '分享', '下载', '标记', '喜欢', '不喜欢'];
-const STATE_WORDS = ['未开始', '未创建', '处理中', '生成中', '试穿中', '排查中', '已完成', '成功', '失败', '错误', '异常', '为空', '空状态', '已读', '未读', '禁用'];
-const OBJECT_WORDS = ['用户', '商品', '内容', '照片', '图片', '服饰', '订单', '库存', '补货单', '通知', '任务', '审核', '报告', '文件', '页面', '账号', '门店', '方案'];
+const ACTION_VERBS = ['创建', '发起', '上传', '拍照', '选择', '查看', '编辑', '提交', '确认', '删除', '取消', '返回', '刷新', '重试', '搜索', '筛选', '分享', '下载', '标记', '喜欢', '不喜欢'];
+const STATE_WORDS = ['未开始', '未创建', '处理中', '生成中', '排查中', '已完成', '成功', '失败', '错误', '异常', '为空', '空状态', '已读', '未读', '禁用'];
+const OBJECT_WORDS = ['用户', '内容', '照片', '图片', '通知', '任务', '审核', '报告', '文件', '页面', '账号', '方案'];
 
 function matchingTerms(source, terms) {
   return terms.filter(term => source.includes(term));

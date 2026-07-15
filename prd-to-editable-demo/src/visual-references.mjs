@@ -4,6 +4,22 @@ const PROPERTIES = new Set([
 ]);
 const FIDELITIES = new Set(['exact', 'high', 'local', 'inspiration']);
 
+export function findVisualReferenceConflicts(references) {
+  if (!Array.isArray(references)) return [];
+  const exact = references.flatMap(reference => Array.isArray(reference?.bindings) ? reference.bindings
+    .filter(binding => binding?.fidelity === 'exact' && typeof binding.property === 'string')
+    .map(binding => ({ referenceId: reference.id, property: binding.property, pageId: reference.scope?.pageId, regionId: reference.scope?.regionId })) : []);
+  const conflicts = [];
+  for (let left = 0; left < exact.length; left++) for (let right = left + 1; right < exact.length; right++) {
+    const a = exact[left]; const b = exact[right];
+    if (a.referenceId !== b.referenceId && a.pageId && a.pageId === b.pageId && a.property === b.property
+      && (a.regionId === undefined || b.regionId === undefined || a.regionId === b.regionId)) {
+      conflicts.push({ property: a.property, pageId: a.pageId, regionId: a.regionId ?? b.regionId, referenceIds: [a.referenceId, b.referenceId] });
+    }
+  }
+  return conflicts;
+}
+
 function fail(message) { throw new TypeError(`Invalid visual references: ${message}`); }
 function object(value, name) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) fail(`${name} must be an object`);

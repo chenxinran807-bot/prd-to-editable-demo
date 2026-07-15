@@ -2,6 +2,7 @@ const PRIORITY_RANK = new Map([['P0', 0], ['P1', 1], ['P2', 2]]);
 const QUESTION_FIELDS = [
   'id', 'theme', 'requirementId', 'priority', 'question', 'options',
   'impact', 'source', 'sourceIds', 'evidence',
+  'recommendation',
 ];
 
 function fail(message) {

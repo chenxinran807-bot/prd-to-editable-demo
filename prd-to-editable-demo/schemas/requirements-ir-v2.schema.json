@@ -97,11 +97,14 @@
     "nonBlank": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
     "blocker": {
       "type": "object", "additionalProperties": false,
-      "required": ["id", "text", "certainty", "sourceIds", "requirementId"],
+      "required": ["id", "text", "certainty", "sourceIds", "requirementId", "theme", "priority", "impact", "recommendation", "options"],
       "properties": {
         "id": { "$ref": "#/$defs/id" }, "text": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
         "certainty": { "$ref": "#/$defs/certainty" }, "sourceIds": { "$ref": "#/$defs/idArray" },
-        "requirementId": { "$ref": "#/$defs/id" }
+        "requirementId": { "$ref": "#/$defs/id" }, "theme": { "$ref": "#/$defs/nonBlank" },
+        "priority": { "enum": ["P0", "P1", "P2"] }, "impact": { "$ref": "#/$defs/nonBlank" },
+        "recommendation": { "type": "string", "minLength": 1, "maxLength": 160, "pattern": ".*\\S.*" },
+        "options": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "$ref": "#/$defs/nonBlank" } }
       }
     }
   }

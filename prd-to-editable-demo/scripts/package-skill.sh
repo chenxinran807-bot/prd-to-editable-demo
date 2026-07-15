@@ -38,10 +38,11 @@ STAGE="$(mktemp -d "${TMPDIR:-/tmp}/prd-to-editable-demo-package.XXXXXX")"
 trap 'rm -rf "$STAGE"' EXIT
 
 # Runtime allowlist. Nothing outside these paths can enter the release archive.
-cp 'SKILL.md' 'package.json' "$STAGE/"
+cp 'SKILL.md' "$STAGE/"
 for directory in agents bin src references schemas; do
   cp -R "$directory" "$STAGE/$directory"
 done
+node -e 'const fs=require("fs"); const p=JSON.parse(fs.readFileSync("package.json","utf8")); const runtime={name:p.name,version:p.version,type:p.type,private:p.private,bin:p.bin}; fs.writeFileSync(process.argv[1], JSON.stringify(runtime,null,2)+"\n")' "$STAGE/package.json"
 
 (cd "$STAGE" && zip -qr "$OUT" .)
 

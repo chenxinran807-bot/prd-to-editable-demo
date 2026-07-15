@@ -185,11 +185,16 @@ export function validateRequirementsIrV2(input, source) {
 
   uniqueIds(input.blockers, 'blockers');
   for (const blocker of input.blockers) {
-    keys(blocker, ['id', 'text', 'certainty', 'sourceIds', 'requirementId'], `blocker ${blocker.id}`);
+    keys(blocker, ['id', 'text', 'certainty', 'sourceIds', 'requirementId', 'theme', 'priority', 'impact', 'recommendation', 'options'], `blocker ${blocker.id}`);
     string(blocker.text, `blocker ${blocker.id} text`);
     string(blocker.requirementId, `blocker ${blocker.id} requirementId`);
     if (!requirementIds.has(blocker.requirementId)) fail(`blocker ${blocker.id} references unknown requirement ${blocker.requirementId}`);
     if (!CERTAINTIES.has(blocker.certainty)) fail(`unknown blocker certainty ${blocker.certainty}`);
+    for (const field of ['theme', 'priority', 'impact', 'recommendation']) string(blocker[field], `blocker ${blocker.id} ${field}`);
+    if (!['P0', 'P1', 'P2'].includes(blocker.priority)) fail(`blocker ${blocker.id} priority must be P0, P1, or P2`);
+    if (blocker.recommendation.length > 160) fail(`blocker ${blocker.id} recommendation must be concise`);
+    strings(blocker.options, `blocker ${blocker.id} options`);
+    if (blocker.options.length < 2 || new Set(blocker.options.map(item => item.trim())).size !== blocker.options.length) fail(`blocker ${blocker.id} options must contain at least two unique values`);
     references(blocker.sourceIds, sourceIds, `blocker ${blocker.id} sourceIds`, 'sourceUnit');
   }
   return structuredClone(input);

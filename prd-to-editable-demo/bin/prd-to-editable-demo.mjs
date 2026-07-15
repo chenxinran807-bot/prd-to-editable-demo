@@ -11,7 +11,7 @@ import { renderDemo } from '../src/render-demo.mjs';
 import { writeOutput } from '../src/write-output.mjs';
 import { validateRequirementsIrV2 } from '../src/requirements-ir-v2.mjs';
 import { buildClarificationTurn, applyClarifications } from '../src/clarification.mjs';
-import { validateVisualReferences } from '../src/visual-references.mjs';
+import { findVisualReferenceConflicts, validateVisualReferences } from '../src/visual-references.mjs';
 import { compileExecutionBaseline } from '../src/execution-baseline.mjs';
 import { verifyFidelity } from '../src/fidelity-verifier.mjs';
 import { publishDirectory } from '../src/publish-directory.mjs';
@@ -70,12 +70,7 @@ export async function main(argv = process.argv.slice(2)) {
   let v2Context = null;
   if (options.requirementsV2) {
     let ir = validateRequirementsIrV2(await readJson(options.requirementsV2, 'requirements v2'), source);
-    const prepareClarifications = value => ({
-      ...value,
-      blockers: value.blockers.map((blocker) => ({
-        ...blocker, theme: 'requirements', priority: blocker.certainty === 'conflicting' ? 'P0' : 'P1', question: blocker.text
-      }))
-    });
+    const prepareClarifications = value => ({ ...value, blockers: value.blockers.map(blocker => ({ ...blocker, question: blocker.text })) });
     const ensureArray = (value, label) => {
       if (!Array.isArray(value)) throw new TypeError(`${label} must be an array`);
       return value;
@@ -93,6 +88,20 @@ export async function main(argv = process.argv.slice(2)) {
       return 5;
     }
     const visualInput = ensureArray(options.visualReferences ? await readJson(options.visualReferences, 'visual references') : [], 'visual references');
+    const visualConflicts = findVisualReferenceConflicts(visualInput);
+    if (visualConflicts.length) {
+      const questions = visualConflicts.slice(0, 3).map((conflict, index) => ({
+        id: `visual-conflict-${index + 1}`, theme: 'visual-reference-conflict', priority: 'P0',
+        impact: `Two exact references control ${conflict.property} in the same visible scope`,
+        recommendation: 'choose one exact source or lower fidelity',
+        options: conflict.referenceIds.map(id => `Keep ${id} exact`), conflict,
+      }));
+      await publishDirectory(output, dir => writeFile(`${dir}/clarification-required.json`, `${JSON.stringify({
+        schemaVersion: 1, status: 'clarification-required', turn: { theme: 'visual-reference-conflict', questions },
+        remaining: visualConflicts.length, resumeCommand: 'Update the visual reference manifest to resolve conflicts, then rerun the same --visual-references command.'
+      }, null, 2)}\n`));
+      return 5;
+    }
     const visualReferences = validateVisualReferences(visualInput, {
       pageIds: ir.pages.map(({ id }) => id), regions: ir.regions.map(({ id, pageId }) => ({ id, pageId }))
     });

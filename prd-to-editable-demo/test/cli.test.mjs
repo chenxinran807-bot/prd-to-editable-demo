@@ -50,10 +50,7 @@ function writeV2Fixture(root, { blockers = [], background = true } = {}) {
 test('v2 blocker removes stale output and emits a bounded clarification artifact', () => {
   const root = mkdtempSync(join(tmpdir(), 'v2-blocker-'));
   const { prd, requirements } = writeV2Fixture(root, { blockers: [
-    { id: 'b1', text: 'Choose persistence behavior', certainty: 'missing', sourceIds: [], requirementId: 'r1' },
-    { id: 'b2', text: 'Choose retry behavior', certainty: 'missing', sourceIds: [], requirementId: 'r1' },
-    { id: 'b3', text: 'Choose completion behavior', certainty: 'missing', sourceIds: [], requirementId: 'r1' },
-    { id: 'b4', text: 'Choose cancellation behavior', certainty: 'missing', sourceIds: [], requirementId: 'r1' }
+    ...['persistence', 'retry', 'completion', 'cancellation'].map((name, index) => ({ id: `b${index + 1}`, text: `Choose ${name} behavior`, certainty: 'missing', sourceIds: [], requirementId: 'r1', theme: 'core-flow', priority: index ? 'P1' : 'P0', impact: 'Changes the visible flow', recommendation: 'Use the first explicit path', options: ['Keep current page', 'Open a separate page'] }))
   ] });
   const out = join(root, 'out'); mkdirSync(out); writeFileSync(join(out, 'index.html'), 'stale');
   const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--out', out], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
@@ -62,6 +59,8 @@ test('v2 blocker removes stale output and emits a bounded clarification artifact
   const blocker = JSON.parse(readFileSync(join(out, 'clarification-required.json'), 'utf8'));
   assert.equal(blocker.status, 'clarification-required');
   assert.equal(blocker.turn.questions.length, 3);
+  assert.equal(blocker.turn.theme, 'core-flow');
+  assert.ok(blocker.turn.questions.every(item => item.impact && item.recommendation && item.options.length >= 2));
   assert.equal(blocker.remaining, 4);
   assert.equal(JSON.stringify(blocker).includes('sourceCoverage'), false);
 });
@@ -109,6 +108,21 @@ test('v2 professional handoff carries the frozen baseline and visual contracts',
   assert.equal(handoff.fidelity, undefined);
 });
 
+test('v2 exact visual conflicts produce bounded clarification instead of a broken deliverable', () => {
+  const root = mkdtempSync(join(tmpdir(), 'v2-visual-conflict-'));
+  const { prd, requirements } = writeV2Fixture(root); const visuals = join(root, 'visuals.json'); const out = join(root, 'out');
+  writeFileSync(visuals, JSON.stringify(['one', 'two'].map(id => ({ id, asset: `${id}.png`, scope: { pageId: 'main' }, bindings: [{ property: 'layout', fidelity: 'exact' }], exclude: [] }))));
+  mkdirSync(out); writeFileSync(join(out, 'index.html'), 'stale');
+  const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--visual-references', visuals, '--out', out], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+  assert.equal(result.status, 5, result.stderr);
+  assert.throws(() => readFileSync(join(out, 'index.html'), 'utf8'));
+  const artifact = JSON.parse(readFileSync(join(out, 'clarification-required.json'), 'utf8'));
+  assert.equal(artifact.turn.theme, 'visual-reference-conflict');
+  assert.ok(artifact.turn.questions.length <= 3);
+  assert.match(artifact.turn.questions[0].recommendation, /choose one exact source or lower fidelity/i);
+  assert.deepEqual(artifact.turn.questions[0].options, ['Keep one exact', 'Keep two exact']);
+});
+
 test('fidelity artifacts use the actual subjective-review verification result', () => {
   const root = mkdtempSync(join(tmpdir(), 'v2-review-'));
   const { prd, requirements } = writeV2Fixture(root);
@@ -129,8 +143,8 @@ test('fidelity artifacts use the actual subjective-review verification result', 
 test('confirmations update only the blocker-linked requirements', () => {
   const root = mkdtempSync(join(tmpdir(), 'v2-links-'));
   const { prd, requirements } = writeV2Fixture(root, { blockers: [
-    { id: 'b1', text: 'Confirm submit', certainty: 'missing', sourceIds: [], requirementId: 'r1' },
-    { id: 'b2', text: 'Confirm context', certainty: 'missing', sourceIds: [], requirementId: 'r2' }
+    { id: 'b1', text: 'Confirm submit', certainty: 'missing', sourceIds: [], requirementId: 'r1', theme: 'flow', priority: 'P0', impact: 'Changes submission', recommendation: 'Use submit', options: ['Submit', 'Cancel'] },
+    { id: 'b2', text: 'Confirm context', certainty: 'missing', sourceIds: [], requirementId: 'r2', theme: 'flow', priority: 'P1', impact: 'Changes context', recommendation: 'Keep hidden', options: ['Keep hidden', 'Show'] }
   ] });
   const confirmations = join(root, 'confirmations.json');
   writeFileSync(confirmations, JSON.stringify([{ blockerId: 'b1', answer: 'yes', answeredAt: 'now' }]));

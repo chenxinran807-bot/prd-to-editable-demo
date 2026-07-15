@@ -19,5 +19,5 @@ P0/P1 关键 blocker 未获得用户答案时，不得冻结 baseline。清晰 P
 ## Domain-neutral JSON example
 
 ```json
-{"theme":"failure-path","questions":[{"id":"b1","theme":"failure-path","requirementId":"r1","priority":"P0","question":"建议保留当前页并允许重试；失败后应如何处理？","options":["留在当前页并重试","进入独立错误页"]}]}
+{"theme":"failure-path","questions":[{"id":"b1","theme":"failure-path","requirementId":"r1","priority":"P0","question":"失败后应如何处理？","impact":"改变失败状态的页面与返回路径","recommendation":"留在当前页并允许重试","options":["留在当前页并重试","进入独立错误页"]}]}
 ```
