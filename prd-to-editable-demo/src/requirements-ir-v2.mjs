@@ -159,8 +159,10 @@ export function validateRequirementsIrV2(input, source) {
 
   uniqueIds(input.blockers, 'blockers');
   for (const blocker of input.blockers) {
-    keys(blocker, ['id', 'text', 'certainty', 'sourceIds'], `blocker ${blocker.id}`);
+    keys(blocker, ['id', 'text', 'certainty', 'sourceIds', 'requirementId'], `blocker ${blocker.id}`);
     string(blocker.text, `blocker ${blocker.id} text`);
+    string(blocker.requirementId, `blocker ${blocker.id} requirementId`);
+    if (!requirementIds.has(blocker.requirementId)) fail(`blocker ${blocker.id} references unknown requirement ${blocker.requirementId}`);
     if (!CERTAINTIES.has(blocker.certainty)) fail(`unknown blocker certainty ${blocker.certainty}`);
     references(blocker.sourceIds, sourceIds, `blocker ${blocker.id} sourceIds`, 'sourceUnit');
   }

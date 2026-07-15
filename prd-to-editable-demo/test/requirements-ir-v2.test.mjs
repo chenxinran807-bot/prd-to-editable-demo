@@ -37,7 +37,7 @@ function validIr() {
     regions: [{ id: 'reg1', pageId: 'p1', name: 'Primary' }],
     actions: [{ id: 'a1', name: 'Save', fromPageId: 'p1', toPageId: 'p1', regionId: 'reg1', requirementIds: ['r1'] }],
     coreJourneys: [{ id: 'j1', name: 'Save flow', actionIds: ['a1'], startPageId: 'p1', expectedEndPageId: 'p1' }],
-    blockers: [{ id: 'b1', text: 'Persistence behavior is unspecified', certainty: 'missing', sourceIds: [] }],
+    blockers: [{ id: 'b1', text: 'Persistence behavior is unspecified', certainty: 'missing', sourceIds: [], requirementId: 'r1' }],
   };
 }
 
@@ -138,6 +138,15 @@ test('rejects a page that claims a region owned by another page', () => {
   const input = validIr();
   input.pages.push({ id: 'p2', name: 'Other', regionIds: ['reg1'] });
   assert.throws(() => validateRequirementsIrV2(input, source), /region reg1 belongs to page p1/i);
+});
+
+test('requires every blocker to resolve to a real requirement', () => {
+  const missing = validIr(); delete missing.blockers[0].requirementId;
+  assert.throws(() => validateRequirementsIrV2(missing, source), /requirementId.*non-empty/i);
+  const unknown = validIr(); unknown.blockers[0].requirementId = 'missing';
+  assert.throws(() => validateRequirementsIrV2(unknown, source), /unknown requirement missing/i);
+  const empty = validIr(); empty.requirements = []; empty.actions[0].requirementIds = []; empty.blockers[0].requirementId = 'r1';
+  assert.throws(() => validateRequirementsIrV2(empty, source), /unknown requirement r1/i);
 });
 
 test('schema rejects whitespace-only persisted strings consistently', () => {

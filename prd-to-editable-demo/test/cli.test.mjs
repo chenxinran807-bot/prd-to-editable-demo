@@ -50,10 +50,10 @@ function writeV2Fixture(root, { blockers = [], background = true } = {}) {
 test('v2 blocker removes stale output and emits a bounded clarification artifact', () => {
   const root = mkdtempSync(join(tmpdir(), 'v2-blocker-'));
   const { prd, requirements } = writeV2Fixture(root, { blockers: [
-    { id: 'b1', text: 'Choose persistence behavior', certainty: 'missing', sourceIds: [] },
-    { id: 'b2', text: 'Choose retry behavior', certainty: 'missing', sourceIds: [] },
-    { id: 'b3', text: 'Choose completion behavior', certainty: 'missing', sourceIds: [] },
-    { id: 'b4', text: 'Choose cancellation behavior', certainty: 'missing', sourceIds: [] }
+    { id: 'b1', text: 'Choose persistence behavior', certainty: 'missing', sourceIds: [], requirementId: 'r1' },
+    { id: 'b2', text: 'Choose retry behavior', certainty: 'missing', sourceIds: [], requirementId: 'r1' },
+    { id: 'b3', text: 'Choose completion behavior', certainty: 'missing', sourceIds: [], requirementId: 'r1' },
+    { id: 'b4', text: 'Choose cancellation behavior', certainty: 'missing', sourceIds: [], requirementId: 'r1' }
   ] });
   const out = join(root, 'out'); mkdirSync(out); writeFileSync(join(out, 'index.html'), 'stale');
   const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--out', out], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
@@ -124,6 +124,43 @@ test('fidelity artifacts use the actual subjective-review verification result', 
   assert.equal(matrix.status, 'review-required');
   assert.equal(matrix.checks.find(check => check.name === 'visual references').reviewRequired, true);
   assert.ok(matrix.traceability.some(item => item.kind === 'visual-reference' && item.id === 'ref-1'));
+});
+
+test('confirmations update only the blocker-linked requirements', () => {
+  const root = mkdtempSync(join(tmpdir(), 'v2-links-'));
+  const { prd, requirements } = writeV2Fixture(root, { blockers: [
+    { id: 'b1', text: 'Confirm submit', certainty: 'missing', sourceIds: [], requirementId: 'r1' },
+    { id: 'b2', text: 'Confirm context', certainty: 'missing', sourceIds: [], requirementId: 'r2' }
+  ] });
+  const confirmations = join(root, 'confirmations.json');
+  writeFileSync(confirmations, JSON.stringify([{ blockerId: 'b1', answer: 'yes', answeredAt: 'now' }]));
+  const first = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--confirmations', confirmations, '--out', join(root, 'blocked')], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+  assert.equal(first.status, 5, first.stderr);
+  const turn = JSON.parse(readFileSync(join(root, 'blocked', 'clarification-required.json'), 'utf8')).turn;
+  assert.equal(turn.questions[0].requirementId, 'r2');
+  writeFileSync(confirmations, JSON.stringify([
+    { blockerId: 'b1', answer: 'yes', answeredAt: 'now' }, { blockerId: 'b2', answer: 'no', answeredAt: 'later' }
+  ]));
+  const out = join(root, 'out');
+  const second = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--confirmations', confirmations, '--intent', '快速评审初版，优先速度', '--out', out], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+  assert.equal(second.status, 0, second.stderr);
+  const ir = JSON.parse(readFileSync(join(out, 'requirements-ir.json'), 'utf8'));
+  assert.deepEqual(ir.requirements.find(item => item.id === 'r1').confirmations.map(item => item.blockerId), ['b1']);
+  assert.deepEqual(ir.requirements.find(item => item.id === 'r2').confirmations.map(item => item.blockerId), ['b2']);
+});
+
+test('rejects dangerous output paths without touching inputs or the package', () => {
+  const packageDir = new URL('..', import.meta.url);
+  for (const kind of ['root', 'package', 'input-parent', 'input-file']) {
+    const root = mkdtempSync(join(tmpdir(), 'v2-path-'));
+    const { prd, requirements } = writeV2Fixture(root);
+    const before = readFileSync(requirements, 'utf8');
+    const out = kind === 'root' ? '/' : kind === 'package' ? packageDir.pathname : kind === 'input-parent' ? root : requirements;
+    const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--out', out], { cwd: packageDir, encoding: 'utf8' });
+    assert.equal(result.status, 1, `${kind}: ${result.stderr}`);
+    assert.match(result.stderr, /Unsafe output path/i);
+    assert.equal(readFileSync(requirements, 'utf8'), before);
+  }
 });
 
 test('generates the complete editable demo deliverable', () => {

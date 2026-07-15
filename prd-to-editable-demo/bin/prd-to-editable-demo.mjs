@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { resolve } from 'node:path';
+import { basename, dirname, parse, relative, resolve } from 'node:path';
 import { analyzeRequirements, parsePrd } from '../src/parse-prd.mjs';
 import { validateSemanticRequirements } from '../src/semantic-requirements.mjs';
 import { executionBaselineToModel, semanticRequirementsToModel } from '../src/semantic-to-model.mjs';
@@ -14,6 +14,7 @@ import { buildClarificationTurn, applyClarifications } from '../src/clarificatio
 import { validateVisualReferences } from '../src/visual-references.mjs';
 import { compileExecutionBaseline } from '../src/execution-baseline.mjs';
 import { verifyFidelity } from '../src/fidelity-verifier.mjs';
+import { publishDirectory } from '../src/publish-directory.mjs';
 
 export function parseArgs(argv) {
   const options = { assets: [] };
@@ -38,6 +39,16 @@ export async function main(argv = process.argv.slice(2)) {
     process.stderr.write('Usage: prd-to-editable-demo --prd <path> --out <directory> [--requirements <semantic-ir.json>] [--requirements-v2 <requirements-ir-v2.json>] [--confirmations <answers.json>] [--visual-references <references.json>] [--asset <path>] [--intent <text>] [--url <url>]\n');
     return 2;
   }
+  const inputPaths = [options.prd, options.requirements, options.requirementsV2, options.confirmations, options.visualReferences]
+    .filter(Boolean).map(path => realpathSync(resolve(path)));
+  const requestedOutput = resolve(options.out);
+  let output;
+  try { output = realpathSync(requestedOutput); } catch { output = resolve(realpathSync(dirname(requestedOutput)), basename(requestedOutput)); }
+  const packageRoot = realpathSync(process.cwd());
+  const isAncestor = (ancestor, child) => { const value = relative(ancestor, child); return value === '' || (!value.startsWith('..') && !value.startsWith('/')); };
+  if (output === parse(output).root || isAncestor(output, packageRoot) || inputPaths.some(input => isAncestor(output, input))) {
+    throw new Error(`Unsafe output path: ${output} must not be a filesystem root, package directory, input file, or input ancestor`);
+  }
   const source = await readFile(resolve(options.prd), 'utf8');
   const readJson = async (path, label) => {
     const resolved = resolve(path);
@@ -59,8 +70,7 @@ export async function main(argv = process.argv.slice(2)) {
         acceptance: []
       })),
       blockers: value.blockers.map((blocker) => ({
-        ...blocker, theme: 'requirements', priority: blocker.certainty === 'conflicting' ? 'P0' : 'P1',
-        requirementId: value.requirements[0]?.id, question: blocker.text
+        ...blocker, theme: 'requirements', priority: blocker.certainty === 'conflicting' ? 'P0' : 'P1', question: blocker.text
       }))
     });
     const ensureArray = (value, label) => {
@@ -72,13 +82,10 @@ export async function main(argv = process.argv.slice(2)) {
     ir = applyClarifications(ir, confirmations);
     const turn = buildClarificationTurn(ir.blockers);
     if (turn) {
-      const output = resolve(options.out);
-      await rm(output, { recursive: true, force: true });
-      await mkdir(output, { recursive: true });
-      await writeFile(`${output}/clarification-required.json`, `${JSON.stringify({
-        schemaVersion: 1, status: 'clarification-required', turn, remaining: ir.blockers.length,
-        resumeCommand: 'prd-to-editable-demo --requirements-v2 <requirements-ir-v2.json> --confirmations <answers.json>'
-      }, null, 2)}\n`);
+      await publishDirectory(output, dir => writeFile(`${dir}/clarification-required.json`, `${JSON.stringify({
+          schemaVersion: 1, status: 'clarification-required', turn, remaining: ir.blockers.length,
+          resumeCommand: 'prd-to-editable-demo --requirements-v2 <requirements-ir-v2.json> --confirmations <answers.json>'
+        }, null, 2)}\n`));
       process.stderr.write(`Requirements clarification required: ${turn.theme} (${turn.questions.length} questions, ${ir.blockers.length} remaining)\n`);
       return 5;
     }
@@ -97,23 +104,19 @@ export async function main(argv = process.argv.slice(2)) {
   if (route.deliveryMode === 'professional' && !v2Context) {
     const missing = ['screens', 'transitions'].filter(field => !Array.isArray(requirements[field]) || requirements[field].length === 0);
     if (missing.length) {
-      const output = resolve(options.out);
-      await rm(output, { recursive: true, force: true });
-      await mkdir(output, { recursive: true });
-      await writeFile(`${output}/requirements-blocker.json`, `${JSON.stringify({
+      await publishDirectory(output, dir => writeFile(`${dir}/requirements-blocker.json`, `${JSON.stringify({
         schemaVersion: 1,
         status: 'semantic-requirements-required',
         extractionMode: requirements.extractionMode,
         missing,
         action: '宿主 Agent 必须根据完整 PRD 生成带原文证据的 model-semantic 结构后重新运行',
         resumeCommand: 'prd-to-editable-demo --requirements <semantic-requirements.json>'
-      }, null, 2)}\n`);
+      }, null, 2)}\n`));
       process.stderr.write(`专业模式缺少语义结构：${missing.join('、')}；已生成 requirements-blocker.json\n`);
       return 4;
     }
   }
   if (route.id !== 'local') {
-    const output = resolve(options.out);
     const parity = JSON.parse(await readFile(new URL('../references/capability-parity.json', import.meta.url), 'utf8'));
     const specialistBaseline = parity.capabilities.inspire;
     const stages = route.stages ?? [route.id];
@@ -137,13 +140,11 @@ export async function main(argv = process.argv.slice(2)) {
         ...stageCriteria
       ]
     };
-    await rm(output, { recursive: true, force: true });
-    await mkdir(output, { recursive: true });
-    await writeFile(`${output}/specialist-handoff.json`, JSON.stringify(handoff, null, 2));
-    await writeFile(`${output}/specialist-evidence.template.json`, `${JSON.stringify({
-      specialistEvidence: stageCriteria.map(criterion => ({ criterion, evidence: '' }))
-    }, null, 2)}\n`);
-    await writeFile(`${output}/NEXT.md`, `# 专业能力接管\n\n- 执行链：${stages.join(' → ')}\n- 最终交付 Skill：${route.id}\n- 原因：${route.reason}\n- 输入契约：specialist-handoff.json\n- 验收证据模板：specialist-evidence.template.json\n\n统一入口必须按顺序执行计划：前一阶段输出作为后一阶段的需求上下文；不得把 PRD 章节机械生成页面。专业结果完成后填写每项证据，再执行 finalize-specialist 与 verify-specialist；缺少任一步时保持 review-required。\n`);
+    await publishDirectory(output, dir => Promise.all([
+      writeFile(`${dir}/specialist-handoff.json`, JSON.stringify(handoff, null, 2)),
+      writeFile(`${dir}/specialist-evidence.template.json`, `${JSON.stringify({ specialistEvidence: stageCriteria.map(criterion => ({ criterion, evidence: '' })) }, null, 2)}\n`),
+      writeFile(`${dir}/NEXT.md`, `# 专业能力接管\n\n- 执行链：${stages.join(' → ')}\n- 最终交付 Skill：${route.id}\n- 原因：${route.reason}\n- 输入契约：specialist-handoff.json\n- 验收证据模板：specialist-evidence.template.json\n\n统一入口必须按顺序执行计划：前一阶段输出作为后一阶段的需求上下文；不得把 PRD 章节机械生成页面。专业结果完成后填写每项证据，再执行 finalize-specialist 与 verify-specialist；缺少任一步时保持 review-required。\n`)
+    ]));
     process.stderr.write(`需要执行 ${stages.join(' → ')}，已生成交接包：${route.reason}\n`);
     return 3;
   }
@@ -180,7 +181,7 @@ export async function main(argv = process.argv.slice(2)) {
       }))
     };
   }
-  const result = await writeOutput({ outDir: options.out, html, manifest, context: v2Context });
+  const result = await writeOutput({ outDir: output, html, manifest, context: v2Context });
   process.stdout.write(`${result.output}/index.html\n`);
   return 0;
 }
