@@ -113,7 +113,7 @@ export async function main(argv = process.argv.slice(2)) {
   const requirements = v2Context ? v2Context.ir : requirementsPath
     ? validateSemanticRequirements(JSON.parse(await readFile(requirementsPath, 'utf8')), source)
     : analyzeRequirements(source);
-  const route = selectRoute({ intent: options.intent, assets: options.assets, source, url: options.url });
+  const route = selectRoute({ intent: v2Context?.visualReferences.length ? '高保真视觉参考，专业交付' : options.intent, assets: [...options.assets, ...(v2Context?.visualReferences.map(reference => reference.asset) ?? [])], source, url: options.url });
   if (route.deliveryMode === 'professional' && !v2Context) {
     const missing = ['screens', 'transitions'].filter(field => !Array.isArray(requirements[field]) || requirements[field].length === 0);
     if (missing.length) {
@@ -168,12 +168,6 @@ export async function main(argv = process.argv.slice(2)) {
     manifest.requirements = v2Context.ir;
     manifest.assumptions = [];
     manifest.gaps = [];
-    manifest.appliedVisualReferences = v2Context.visualReferences.map(reference => {
-      const page = manifest.pages.find(({ id }) => id === reference.scope.pageId);
-      const candidates = (page?.elements ?? []).filter(element => reference.scope.regionId === undefined || element.regionId === reference.scope.regionId);
-      return { ...reference, elementKeys: candidates.map(({ key }) => key),
-        ...(reference.bindings.some(({ fidelity }) => ['high', 'local', 'inspiration'].includes(fidelity)) ? { subjectiveReview: 'required' } : {}) };
-    });
   }
   manifest.delivery = { mode: route.deliveryMode, formal: false };
   manifest.routing = { selected: route.id, reason: route.reason, handoff: route.id === 'local' ? 'local-fast-path' : `use-${route.id}-skill` };

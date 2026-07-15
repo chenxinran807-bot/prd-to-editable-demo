@@ -14,10 +14,18 @@ function renderElement(element) {
 
 export function renderDemo(model) {
   const manifestJson = JSON.stringify(model).replaceAll('<', '\\u003c');
-  const pages = model.pages.map(page => `<section class="proto-page" data-page-id="${escapeHtml(page.id)}" hidden>
+  const taxonomyChildren = parent => (model.taxonomy ?? []).filter(node => node.parentId === parent).map(node => `<li data-taxonomy-id="${escapeHtml(node.id)}">${escapeHtml(node.label)}${taxonomyChildren(node.id).length ? `<ul>${taxonomyChildren(node.id).join('')}</ul>` : ''}</li>`);
+  const taxonomy = (model.taxonomy ?? []).length ? `<nav class="taxonomy-tree" aria-label="Product hierarchy"><ul>${taxonomyChildren(null).join('')}</ul></nav>` : '';
+  const pages = model.pages.map(page => {
+    const assigned = new Set();
+    const regions = (page.regions ?? []).map(region => {
+      const elements = page.elements.filter(element => element.regionId === region.id); elements.forEach(element => assigned.add(element));
+      return `<div class="semantic-region" data-region-id="${escapeHtml(region.id)}" data-layout="${escapeHtml(JSON.stringify(region.layout ?? {}))}" data-behavior="${escapeHtml(JSON.stringify(region.behavior ?? {}))}" data-prominence="${escapeHtml(JSON.stringify(region.prominence ?? {}))}">${elements.map(renderElement).join('\n')}</div>`;
+    }).join('\n');
+    return `<section class="proto-page" data-page-id="${escapeHtml(page.id)}" hidden>
     <div class="phone-header"><span>${escapeHtml(model.product.name)}</span><span class="status-chip">${escapeHtml(page.state)}</span></div>
-    <div class="page-content">${page.elements.map(renderElement).join('\n')}</div>
-  </section>`).join('\n');
+    <div class="page-content">${taxonomy}${page.elements.filter(element => !assigned.has(element)).map(renderElement).join('\n')}${regions}</div>
+  </section>`; }).join('\n');
   const scenarioOptions = model.pages.map(page => `<option value="${escapeHtml(page.id)}">${escapeHtml(page.title)} · ${escapeHtml(page.state)}</option>`).join('');
   return `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

@@ -25,7 +25,8 @@ test('packaged Skill installs without a wrapper directory and runs independently
     assert.equal(existsSync(join(installed, forbidden)), false, `${forbidden} must not ship`);
   }
   const runtimePackage = JSON.parse(readFileSync(join(installed, 'package.json'), 'utf8'));
-  assert.equal(runtimePackage.scripts, undefined);
+  assert.equal(runtimePackage.scripts['verify:delivery'], 'node scripts/browser-e2e.mjs --verify-delivery');
+  assert.equal(existsSync(join(installed, 'scripts', 'browser-e2e.mjs')), true);
   for (const target of Object.values(runtimePackage.bin)) assert.equal(existsSync(join(installed, target)), true, `${target} must exist`);
   for (const file of [
     'references/requirements-ir.md',

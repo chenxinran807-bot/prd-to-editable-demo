@@ -81,6 +81,8 @@ try {
     route: handoff.routing,
     requirements: handoff.requirements,
     inputs: handoff.inputs,
+    executionBaseline: handoff.executionBaseline,
+    visualReferences: handoff.visualReferences,
     designSkill,
     parentAssetId: args.ref ?? null
   });

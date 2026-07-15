@@ -101,7 +101,7 @@ export function executionBaselineToModel(baseline, product) {
         action: { type: 'navigate', target: action.toPageId },
       });
     }
-    return { id: page.id, title: page.name, state: 'default', elements };
+    return { id: page.id, title: page.name, state: 'default', regions: structuredClone(page.regions), elements };
   });
   const model = {
     schemaVersion: 1,

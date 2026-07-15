@@ -219,5 +219,7 @@ export function validateRequirementsIrV2(input, source) {
     if (blocker.options.length !== resolutionOptions.size || blocker.options.some(option => !resolutionOptions.has(option))) fail(`blocker ${blocker.id} options and resolutions must match exactly`);
     references(blocker.sourceIds, sourceIds, `blocker ${blocker.id} sourceIds`, 'sourceUnit');
   }
+  for (const requirement of input.requirements) if (['missing', 'conflicting'].includes(requirement.certainty)
+    && !input.blockers.some(blocker => blocker.requirementId === requirement.id)) fail(`requirement ${requirement.id} with certainty ${requirement.certainty} must have a blocker`);
   return structuredClone(input);
 }

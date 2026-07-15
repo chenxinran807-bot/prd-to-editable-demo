@@ -81,3 +81,10 @@ test('professional prompt contains interaction, visual, editability, and quality
   assert.match(plan.prompt, /主观视觉审查/);
   assert.match(plan.prompt, /触发条件.*系统行为.*用户反馈/);
 });
+
+test('v2 plan renders frozen slices and scoped visual bindings without legacy placeholders', () => {
+  const baseline = { taxonomy: [{ id: 'root', label: 'Root', parentId: null }], pages: [{ id: 'p1', name: 'Start', regions: [{ id: 'r1', layout: { mode: 'stack' }, behavior: { sticky: false }, prominence: { level: 'primary' } }], requirements: [{ id: 'q1', exactCopy: 'Exact words', componentType: 'heading', state: 'ready', visibleState: 'visible' }], actions: [{ id: 'a1', trigger: 'tap', visibleFeedback: 'Done appears', stateChange: 'completed', toPageId: 'p2' }] }], coreJourneys: [{ id: 'j1', startPageId: 'p1', actionIds: ['a1'], expectedEndPageId: 'p2' }], unresolvedNonBlocking: [] };
+  const plan = buildInspirePlan({ route: { finalContainer: 'inspire', stages: ['inspire'] }, executionBaseline: baseline, visualReferences: [{ id: 'ref', asset: 'ref.png', scope: { pageId: 'p1' }, bindings: [{ property: 'color', fidelity: 'high' }], exclude: ['layout'] }], designSkill: 'public:test@1' });
+  for (const value of ['Exact words', 'Done appears', 'stateChange=completed', 'Root parent=root', 'ref.png', '"fidelity":"high"', 'never blend']) assert.match(plan.prompt, new RegExp(value));
+  assert.doesNotMatch(plan.prompt, /未明确/);
+});

@@ -41,6 +41,8 @@ export function compileExecutionBaseline(ir, visualReferences, previous = null, 
   const requirements = ir.requirements ?? [];
   const actions = ir.actions ?? [];
   const coreJourneys = ir.coreJourneys ?? [];
+  for (const requirement of requirements) if (['missing', 'conflicting'].includes(requirement.certainty)
+    && !blockers.some(blocker => blocker.requirementId === requirement.id)) throw new Error(`Execution baseline requirement ${requirement.id} with certainty ${requirement.certainty} requires a blocker`);
   const pageById = indexUnique(pages, 'page');
   const regionById = indexUnique(regions, 'region');
   for (const id of pageById.keys()) {
@@ -154,6 +156,7 @@ export function compileExecutionBaseline(ir, visualReferences, previous = null, 
     version: (previous?.version ?? 0) + 1,
     taxonomy: clone(ir.taxonomy ?? []),
     coreJourneys: clone(coreJourneys),
+    actions: clone(actions),
     nonUiRequirements: clone(requirements.filter((requirement) => requirement.uiEligible === false
       || ['business_context', 'research_evidence', 'delivery_metadata'].includes(requirement.purpose))),
     protectedContent: requirements

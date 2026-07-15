@@ -43,7 +43,20 @@ function renderInspirePrompt({ requirements, stages }) {
   ].join('\n');
 }
 
-export function buildInspirePlan({ route, requirements = {}, inputs = {}, designSkill, parentAssetId = null }) {
+function renderV2Prompt(baseline, visualReferences, stages) {
+  const taxonomy = baseline.taxonomy.map(node => `${node.id}:${node.label} parent=${node.parentId ?? 'root'}`).join('\n');
+  const pages = baseline.pages.map(page => [
+    `PAGE ${page.id} ${page.name}`,
+    ...page.regions.map(region => `REGION ${region.id} order=${page.regions.indexOf(region)} layout=${JSON.stringify(region.layout ?? {})} behavior=${JSON.stringify(region.behavior ?? {})} prominence=${JSON.stringify(region.prominence ?? {})}`),
+    ...page.requirements.map(req => `REQUIREMENT ${req.id} exactCopy=${JSON.stringify(req.exactCopy ?? req.text)} component=${req.componentType ?? 'default'} state=${req.state ?? ''} visibleState=${req.visibleState ?? ''}`),
+    ...page.actions.map(action => `ACTION ${action.id} trigger=${action.trigger} feedback=${action.visibleFeedback} stateChange=${action.stateChange} next=${action.toPageId}`),
+  ].join('\n')).join('\n');
+  const journeys = baseline.coreJourneys.map(j => `${j.id}: ${j.startPageId} --${j.actionIds.join(' -> ')}--> ${j.expectedEndPageId}`).join('\n');
+  const refs = visualReferences.map(ref => `IMAGE ${ref.id} asset=${ref.asset} scope=${JSON.stringify(ref.scope)} bindings=${JSON.stringify(ref.bindings)} exclusions=${JSON.stringify(ref.exclude)}`).join('\n');
+  return [`Frozen v2 execution baseline. Do not reinterpret or optimize exact copy, layout, hierarchy, or flow.`, `Taxonomy hierarchy:\n${taxonomy}`, `Page slices:\n${pages}`, `Core journeys:\n${journeys}`, `Unresolved P2:\n${JSON.stringify(baseline.unresolvedNonBlocking ?? [])}`, `Visual references (apply each only to its declared scope/property/fidelity; never blend images into a moodboard):\n${refs || 'none'}`, `Stages: ${stages.join(' -> ')}`].join('\n\n');
+}
+
+export function buildInspirePlan({ route, requirements = {}, inputs = {}, executionBaseline, visualReferences = [], designSkill, parentAssetId = null }) {
   if (!designSkill) throw new Error('Inspire business design Skill is required for professional delivery');
   if (route?.finalContainer && route.finalContainer !== 'inspire') throw new Error('professional prototype finalContainer must be inspire');
   const stages = route?.stages?.length ? route.stages : ['inspire'];
@@ -56,7 +69,7 @@ export function buildInspirePlan({ route, requirements = {}, inputs = {}, design
     outputType: 'html',
     files: inputs.assets ?? [],
     referenceUrl: inputs.referenceUrl ?? null,
-    prompt: renderInspirePrompt({ requirements, stages }),
+    prompt: executionBaseline ? renderV2Prompt(executionBaseline, visualReferences, stages) : renderInspirePrompt({ requirements, stages }),
     stages,
     acceptance: {
       finalContainer: 'inspire',

@@ -42,7 +42,9 @@ cp 'SKILL.md' "$STAGE/"
 for directory in agents bin src references schemas; do
   cp -R "$directory" "$STAGE/$directory"
 done
-node -e 'const fs=require("fs"); const p=JSON.parse(fs.readFileSync("package.json","utf8")); const runtime={name:p.name,version:p.version,type:p.type,private:p.private,bin:p.bin}; fs.writeFileSync(process.argv[1], JSON.stringify(runtime,null,2)+"\n")' "$STAGE/package.json"
+mkdir -p "$STAGE/scripts"
+cp 'scripts/browser-e2e.mjs' "$STAGE/scripts/"
+node -e 'const fs=require("fs"); const p=JSON.parse(fs.readFileSync("package.json","utf8")); const runtime={name:p.name,version:p.version,type:p.type,private:p.private,bin:p.bin,scripts:{"verify:delivery":"node scripts/browser-e2e.mjs --verify-delivery"}}; fs.writeFileSync(process.argv[1], JSON.stringify(runtime,null,2)+"\n")' "$STAGE/package.json"
 
 (cd "$STAGE" && zip -qr "$OUT" .)
 

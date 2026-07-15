@@ -135,21 +135,17 @@ test('v2 exact visual conflicts produce bounded clarification instead of a broke
   assert.deepEqual(artifact.turn.questions[0].options, ['Keep one exact', 'Keep two exact']);
 });
 
-test('fidelity artifacts use the actual subjective-review verification result', () => {
+test('visual references fail closed into professional handoff instead of claiming local application', () => {
   const root = mkdtempSync(join(tmpdir(), 'v2-review-'));
   const { prd, requirements } = writeV2Fixture(root);
   const visuals = join(root, 'visuals.json');
   writeFileSync(visuals, JSON.stringify([{ id: 'ref-1', asset: 'screen.png', scope: { pageId: 'main', regionId: 'primary' }, bindings: [{ property: 'layout', fidelity: 'high' }], exclude: [] }]));
   const out = join(root, 'out');
   const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--visual-references', visuals, '--intent', '快速评审初版，优先速度', '--out', out], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
-  assert.equal(result.status, 0, result.stderr);
-  const report = readFileSync(join(out, 'fidelity-report.md'), 'utf8');
-  const matrix = JSON.parse(readFileSync(join(out, 'traceability-matrix.json'), 'utf8'));
-  assert.match(report, /Status: review-required/);
-  assert.match(report, /visual references.*subjective review required/i);
-  assert.equal(matrix.status, 'review-required');
-  assert.equal(matrix.checks.find(check => check.name === 'visual references').reviewRequired, true);
-  assert.ok(matrix.traceability.some(item => item.kind === 'visual-reference' && item.id === 'ref-1'));
+  assert.equal(result.status, 3, result.stderr);
+  const handoff = JSON.parse(readFileSync(join(out, 'specialist-handoff.json'), 'utf8'));
+  assert.equal(handoff.visualReferences[0].id, 'ref-1');
+  assert.throws(() => readFileSync(join(out, 'index.html'), 'utf8'));
 });
 
 test('confirmations update only the blocker-linked requirements', () => {
