@@ -58,6 +58,18 @@ test('rejects an unmapped meaningful Markdown block but ignores headings', () =>
   assert.throws(() => validateRequirementsIrV2(input, source), /unmapped meaningful source block/i);
 });
 
+test('accepts exact multi-line CRLF evidence when checking semantic block coverage', () => {
+  const crlfSource = '# Brief\r\n\r\nPeople can save an item.\r\nThe control stays visible.';
+  const quote = 'People can save an item.\r\nThe control stays visible.';
+  const input = validIr();
+  input.sourceUnits = [{ id: 's1', purpose: 'product_requirement', certainty: 'explicit', quote }];
+  input.sourceCoverage = [{ quote, sourceIds: ['s1'] }];
+  input.requirements = [{ id: 'r1', text: 'Save an item', sourceIds: ['s1'], uiEligible: true, taxonomyIds: ['t-child'] }];
+  input.actions[0].requirementIds = ['r1'];
+  input.blockers[0].sourceIds = [];
+  assert.doesNotThrow(() => validateRequirementsIrV2(input, crlfSource));
+});
+
 test('rejects a coverage mapping whose source evidence is outside the block', () => {
   const input = validIr();
   input.sourceCoverage[0].sourceIds = ['s2'];
@@ -105,6 +117,15 @@ test('rejects invalid action and journey references and endpoint mismatch', () =
   endpoint.pages.push({ id: 'p2', name: 'Confirmation', regionIds: [] });
   endpoint.coreJourneys[0].expectedEndPageId = 'p2';
   assert.throws(() => validateRequirementsIrV2(endpoint, source), /expected endpoint/i);
+});
+
+test('validates journey endpoints as non-empty strings and reports invalid values', () => {
+  const blank = validIr();
+  blank.coreJourneys[0].startPageId = '   ';
+  assert.throws(() => validateRequirementsIrV2(blank, source), /startPageId must be a non-empty string/i);
+  const unknown = validIr();
+  unknown.coreJourneys[0].expectedEndPageId = 'missing-page';
+  assert.throws(() => validateRequirementsIrV2(unknown, source), /unknown page missing-page/i);
 });
 
 test('rejects duplicate IDs, including region IDs', () => {

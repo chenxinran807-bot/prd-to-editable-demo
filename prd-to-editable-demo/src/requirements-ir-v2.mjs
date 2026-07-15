@@ -31,12 +31,13 @@ function references(values, ids, name, kind) {
   strings(values, name);
   for (const value of values) if (!ids.has(value)) fail(`${name} references unknown ${kind} ${value}`);
 }
+function normalizeNewlines(value) { return value.replace(/\r\n?/g, '\n'); }
 
 // Markdown blocks, rather than sentences, are the stable evidence boundary. A
 // heading or formatting-only block carries structure but no independently
 // actionable meaning, so it does not need a source mapping.
 function semanticBlocks(source) {
-  return source.replace(/\r\n?/g, '\n').split(/\n\s*\n+/).map((block) => {
+  return normalizeNewlines(source).split(/\n\s*\n+/).map((block) => {
     const lines = block.trim().split('\n').filter((line) => {
       const text = line.trim();
       return text && !/^#{1,6}(?:\s+.*)?$/.test(text) && !/^(?:[-*_]\s*){3,}$/.test(text)
@@ -74,7 +75,7 @@ export function validateRequirementsIrV2(input, source) {
       if (!coverage.quote.includes(unit.quote)) fail(`sourceUnit ${id} does not occur in its covered block`);
     }
   }
-  const covered = new Set(input.sourceCoverage.map(({ quote }) => quote));
+  const covered = new Set(input.sourceCoverage.map(({ quote }) => normalizeNewlines(quote)));
   for (const block of semanticBlocks(source)) if (!covered.has(block)) fail(`unmapped meaningful source block: ${block}`);
 
   const requirementIds = uniqueIds(input.requirements, 'requirements');
@@ -146,7 +147,10 @@ export function validateRequirementsIrV2(input, source) {
     string(journey.name, `journey ${journey.id} name`);
     references(journey.actionIds, actionIds, `journey ${journey.id} actionIds`, 'action');
     if (!journey.actionIds.length) fail(`journey ${journey.id} actionIds cannot be empty`);
-    for (const field of ['startPageId', 'expectedEndPageId']) if (!pageIds.has(journey[field])) fail(`journey ${journey.id} ${field} references unknown page`);
+    for (const field of ['startPageId', 'expectedEndPageId']) {
+      string(journey[field], `journey ${journey.id} ${field}`);
+      if (!pageIds.has(journey[field])) fail(`journey ${journey.id} ${field} references unknown page ${journey[field]}`);
+    }
     const actions = journey.actionIds.map((id) => input.actions.find((action) => action.id === id));
     if (actions[0].fromPageId !== journey.startPageId) fail(`journey ${journey.id} start endpoint is inconsistent`);
     for (let index = 1; index < actions.length; index++) if (actions[index - 1].toPageId !== actions[index].fromPageId) fail(`journey ${journey.id} has discontinuous action endpoints`);
