@@ -31,6 +31,15 @@ export function compileExecutionBaseline(ir, visualReferences, previous = null, 
   const pageById = new Map(pages.map((page) => [page.id, page]));
   const regionById = new Map(regions.map((region) => [region.id, region]));
 
+  for (const page of pages) {
+    if (!Array.isArray(page.regionIds)) throw new TypeError(`Page ${page.id} regionIds must be an array`);
+    for (const regionId of page.regionIds) {
+      const region = regionById.get(regionId);
+      if (!region) throw new Error(`Page ${page.id} references unknown region ${regionId}`);
+      if (region.pageId !== page.id) throw new Error(`Region ${regionId} belongs to page ${region.pageId}, not page ${page.id}`);
+    }
+  }
+
   for (const requirement of requirements) {
     if (!Array.isArray(requirement.targetIds)) throw new TypeError(`Requirement ${requirement.id} targetIds must be an array`);
     for (const targetId of requirement.targetIds) {
@@ -50,11 +59,7 @@ export function compileExecutionBaseline(ir, visualReferences, previous = null, 
   }
 
   const slices = pages.map((page) => {
-    const orderedRegions = regions
-      .map((region, index) => ({ region, index }))
-      .filter(({ region }) => region.pageId === page.id)
-      .sort((left, right) => (left.region.order ?? 0) - (right.region.order ?? 0) || left.index - right.index)
-      .map(({ region }) => clone(region));
+    const orderedRegions = page.regionIds.map((regionId) => clone(regionById.get(regionId)));
     const regionRank = new Map(orderedRegions.map((region, index) => [region.id, index]));
     const selected = requirements
       .map((requirement, index) => ({ requirement, index }))

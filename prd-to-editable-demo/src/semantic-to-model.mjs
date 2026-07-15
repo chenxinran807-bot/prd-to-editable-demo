@@ -83,6 +83,7 @@ export function executionBaselineToModel(baseline, product) {
       certainty: requirement.certainty,
       evidence: structuredClone(requirement.evidence ?? []),
       acceptance: structuredClone(requirement.acceptance ?? []),
+      requirement: structuredClone(requirement),
     }));
     for (const action of page.actions) {
       elements.push({

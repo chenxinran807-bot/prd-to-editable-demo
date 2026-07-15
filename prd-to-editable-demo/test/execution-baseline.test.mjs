@@ -9,13 +9,13 @@ function fixture() {
     taxonomy: [{ id: 'tax-1', label: 'Account', parentId: null }],
     coreJourneys: [{ id: 'journey-1', name: 'Complete', actionIds: ['act-1'], startPageId: 'page-a', expectedEndPageId: 'page-b' }],
     pages: [
-      { id: 'page-a', name: 'Start', regionIds: ['region-late', 'region-first'] },
+      { id: 'page-a', name: 'Start', regionIds: ['region-first', 'region-late'] },
       { id: 'page-b', name: 'Done', regionIds: ['region-done'] },
     ],
     regions: [
-      { id: 'region-late', pageId: 'page-a', name: 'Later', order: 2 },
-      { id: 'region-first', pageId: 'page-a', name: 'First', order: 1 },
-      { id: 'region-done', pageId: 'page-b', name: 'Result', order: 1 },
+      { id: 'region-late', pageId: 'page-a', name: 'Later' },
+      { id: 'region-first', pageId: 'page-a', name: 'First' },
+      { id: 'region-done', pageId: 'page-b', name: 'Result' },
     ],
     requirements: [
       { id: 'req-page', text: 'Page message', exactCopy: 'Exact page copy', sourceIds: ['src-1'], certainty: 'explicit', evidence: [{ quote: 'q' }], acceptance: ['visible'], uiEligible: true, targetIds: ['page-a'], taxonomyIds: ['tax-1'] },
@@ -72,6 +72,11 @@ test('builds model in baseline order with exact copy and declared actions only',
   const model = executionBaselineToModel(baseline, { name: 'Neutral product', goal: 'Complete a flow' });
   assert.deepEqual(model.pages.map(({ id }) => id), ['page-a', 'page-b']);
   assert.deepEqual(model.pages[0].elements.map(({ text }) => text), ['Exact page copy', 'First exact', 'Later requirement', 'Continue exactly']);
+  assert.deepEqual(model.pages[0].elements[0].requirement, baseline.pages[0].requirements[0]);
+  assert.deepEqual(model.pages[0].elements[1].requirement.taxonomyIds, []);
+  assert.deepEqual(model.pages[0].elements[1].requirement.targetIds, ['region-first']);
+  assert.equal(model.pages[0].elements[1].requirement.uiEligible, true);
+  assert.equal(model.pages[0].elements[1].requirement.exactCopy, 'First exact');
   assert.equal(model.pages[0].elements[3].actionId, 'act-1');
   assert.deepEqual(model.pages[0].elements[3].action, { type: 'navigate', target: 'page-b' });
   assert.deepEqual(model.taxonomy, baseline.taxonomy);
