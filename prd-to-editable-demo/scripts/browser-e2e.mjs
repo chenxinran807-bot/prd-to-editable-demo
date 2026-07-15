@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { extname, join, relative, resolve } from 'node:path';
 import { createRequire } from 'node:module';
@@ -17,6 +17,28 @@ function deliveryError(journey, action, page, message) {
   return new Error(`Journey ${journey}${action ? ` action ${action}` : ''}${page ? ` page ${page}` : ''}: ${message}`);
 }
 
+function cssString(value) {
+  return String(value).replace(/[^a-zA-Z0-9_-]/g, character => `\\${character.codePointAt(0).toString(16)} `);
+}
+
+function contained(root, candidate) {
+  const path = relative(root, candidate);
+  return path === '' || (!path.startsWith('..') && !path.startsWith('/'));
+}
+
+export async function resolveStaticFile(outputDir, requestPath) {
+  const root = await realpath(resolve(outputDir));
+  const pathname = decodeURIComponent(new URL(requestPath, 'http://127.0.0.1').pathname);
+  let requested = resolve(root, `.${pathname}`);
+  if (!contained(root, requested)) throw Object.assign(new Error('Static path escapes delivery root'), { statusCode: 403 });
+  let info = await stat(requested);
+  if (info.isDirectory()) requested = join(requested, 'index.html');
+  await lstat(requested);
+  const canonical = await realpath(requested);
+  if (!contained(root, canonical)) throw Object.assign(new Error('Static path escapes delivery root through symlink'), { statusCode: 403 });
+  return canonical;
+}
+
 async function listen(server) {
   await new Promise((resolveListen, reject) => {
     server.once('error', reject);
@@ -30,23 +52,20 @@ async function closeServer(server) {
   await new Promise(resolveClose => server.close(resolveClose));
 }
 
-function localServer(outputDir) {
-  const root = resolve(outputDir);
+export function createStaticServer(outputDir) {
   return createServer(async (request, response) => {
     try {
-      const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
-      const requested = resolve(root, `.${pathname === '/' ? '/index.html' : pathname}`);
-      if (relative(root, requested).startsWith('..')) { response.writeHead(403).end(); return; }
+      const requested = await resolveStaticFile(outputDir, request.url || '/');
       const body = await readFile(requested);
       const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml' };
       response.setHeader('content-type', types[extname(requested)] || 'application/octet-stream');
       response.end(body);
-    } catch { response.writeHead(404).end(); }
+    } catch (error) { response.writeHead(error?.statusCode || 404).end(); }
   });
 }
 
 export function createLocalDeliveryLifecycle({ outputDir }) {
-  const server = localServer(outputDir);
+  const server = createStaticServer(outputDir);
   return {
     async start() {
       await listen(server);
@@ -67,7 +86,7 @@ async function launchDeliveryBrowser(browserFactory) {
 }
 
 /** Verify the frozen baseline's core journeys against the final delivered entry. */
-export async function verifyFinalDeliverableJourneys({ outputDir, url, baseline, browserFactory, localUrlFactory = createLocalDeliveryLifecycle } = {}) {
+export async function verifyFinalDeliverableJourneys({ outputDir, url, baseline, browserFactory, localUrlFactory = createLocalDeliveryLifecycle, quietWindowMs = 50, quiescenceTimeoutMs = 5000, clock = Date.now, wait = ms => new Promise(resolveWait => setTimeout(resolveWait, ms)) } = {}) {
   if (Boolean(outputDir) === Boolean(url)) throw new TypeError('Provide exactly one of outputDir or url');
   if (!baseline || !Array.isArray(baseline.coreJourneys) || !Array.isArray(baseline.actions)) throw new TypeError('A baseline with actions and coreJourneys is required');
   let entryUrl;
@@ -81,15 +100,31 @@ export async function verifyFinalDeliverableJourneys({ outputDir, url, baseline,
   }
   let browser;
   let page;
+  let pendingRequests = 0;
   const runtimeFailures = [];
   const handlers = {
+    request: () => { pendingRequests += 1; },
+    requestfinished: () => { pendingRequests = Math.max(0, pendingRequests - 1); },
     pageerror: error => runtimeFailures.push(`page error: ${error?.message || error}`),
     console: message => { if (message.type?.() === 'error') runtimeFailures.push(`console error: ${message.text?.() || message}`); },
     requestfailed: request => {
+      pendingRequests = Math.max(0, pendingRequests - 1);
       const failedUrl = request.url?.() || '';
       if (!/\/favicon\.ico(?:$|\?)/.test(failedUrl)) runtimeFailures.push(`failed request: ${failedUrl} ${request.failure?.()?.errorText || ''}`.trim());
     },
   };
+  const quiesce = async () => {
+    const deadline = clock() + quiescenceTimeoutMs;
+    do {
+      while (pendingRequests > 0) {
+        if (clock() >= deadline) throw new Error(`timed out waiting for ${pendingRequests} request(s)`);
+        await wait(Math.min(quietWindowMs || 1, 10));
+      }
+      await wait(quietWindowMs);
+    } while (pendingRequests > 0);
+  };
+  let result;
+  let primaryError;
   try {
     if (outputDir) {
       localLifecycle = await localUrlFactory({ outputDir });
@@ -109,14 +144,14 @@ export async function verifyFinalDeliverableJourneys({ outputDir, url, baseline,
       runtimeFailures.length = 0;
       await page.goto(entryUrl, { waitUntil: 'networkidle' });
       if (runtimeFailures.length) throw deliveryError(journey.id, null, journey.startPageId, runtimeFailures.join('; '));
-      const start = page.locator(`[data-page-id="${journey.startPageId}"]:not([hidden])`);
+      const start = page.locator(`[data-page-id="${cssString(journey.startPageId)}"]:not([hidden])`);
       if (await start.count() !== 1 || !await start.isVisible()) throw deliveryError(journey.id, null, journey.startPageId, 'start page is not uniquely visible');
       checks.push(`${journey.id}:start:${currentPageId}`);
       for (const actionId of journey.actionIds) {
         activeActionId = actionId;
         const action = actionById.get(actionId);
         if (!action) throw deliveryError(journey.id, actionId, currentPageId, 'missing baseline action');
-        const control = page.locator(`[data-page-id="${currentPageId}"]:not([hidden]) [data-action-id="${actionId}"]`);
+        const control = page.locator(`[data-page-id="${cssString(currentPageId)}"]:not([hidden]) [data-action-id="${cssString(actionId)}"]`);
         const count = await control.count();
         if (count === 0) throw deliveryError(journey.id, actionId, currentPageId, 'missing action control');
         if (count !== 1) throw deliveryError(journey.id, actionId, currentPageId, `duplicate action controls (${count})`);
@@ -125,10 +160,14 @@ export async function verifyFinalDeliverableJourneys({ outputDir, url, baseline,
         const kind = await control.getAttribute?.('data-kind');
         if (kind === 'notice' || kind === 'static') throw deliveryError(journey.id, actionId, currentPageId, `${kind} action control is not interactive`);
         await control.click();
+        await quiesce();
         if (runtimeFailures.length) throw deliveryError(journey.id, actionId, currentPageId, runtimeFailures.join('; '));
-        const target = page.locator(`[data-page-id="${action.toPageId}"]:not([hidden])`);
+        const target = page.locator(`[data-page-id="${cssString(action.toPageId)}"]:not([hidden])`);
         if (await target.count() !== 1 || !await target.isVisible()) throw deliveryError(journey.id, actionId, action.toPageId, 'expected target page is not uniquely visible');
-        const previous = page.locator(`[data-page-id="${currentPageId}"]:not([hidden])`);
+        await quiesce();
+        if (runtimeFailures.length) throw deliveryError(journey.id, actionId, action.toPageId, runtimeFailures.join('; '));
+        if (await target.count() !== 1 || !await target.isVisible()) throw deliveryError(journey.id, actionId, action.toPageId, 'expected target page did not remain uniquely visible');
+        const previous = page.locator(`[data-page-id="${cssString(currentPageId)}"]:not([hidden])`);
         if (currentPageId !== action.toPageId && await previous.count() !== 0) throw deliveryError(journey.id, actionId, currentPageId, 'previous page remains visible');
         currentPageId = action.toPageId;
         checks.push(`${journey.id}:${actionId}:${currentPageId}`);
@@ -139,15 +178,22 @@ export async function verifyFinalDeliverableJourneys({ outputDir, url, baseline,
         throw deliveryError(journey.id, activeActionId, currentPageId, error?.message || String(error));
       }
     }
-    return { status: 'passed', mode, journeys: baseline.coreJourneys.map(({ id }) => id), checks };
-  } finally {
-    if (page) {
-      for (const [event, handler] of Object.entries(handlers)) page.off?.(event, handler);
-      await page.close?.();
-    }
-    await browser?.close?.();
-    await localLifecycle?.close?.();
+    result = { status: 'passed', mode, journeys: baseline.coreJourneys.map(({ id }) => id), checks };
+  } catch (error) {
+    primaryError = error;
   }
+  const cleanup = [];
+  if (page) {
+    for (const [event, handler] of Object.entries(handlers)) page.off?.(event, handler);
+    cleanup.push(Promise.resolve().then(() => page.close?.()));
+  }
+  cleanup.push(Promise.resolve().then(() => browser?.close?.()));
+  cleanup.push(Promise.resolve().then(() => localLifecycle?.close?.()));
+  const cleanupResults = await Promise.allSettled(cleanup);
+  const cleanupErrors = cleanupResults.filter(item => item.status === 'rejected').map(item => item.reason);
+  if (primaryError) throw primaryError;
+  if (cleanupErrors.length) throw new AggregateError(cleanupErrors, `Final delivery cleanup failed: ${cleanupErrors.map(error => error?.message || error).join('; ')}`);
+  return result;
 }
 
 async function readDownload(download) {
