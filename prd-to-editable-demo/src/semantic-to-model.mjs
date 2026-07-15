@@ -58,3 +58,54 @@ export function semanticRequirementsToModel(requirements) {
   };
   return validateModel(model);
 }
+
+export function executionBaselineToModel(baseline, product) {
+  const pages = baseline.pages.map((page) => {
+    const regionRank = new Map(page.regions.map((region, index) => [region.id, index]));
+    const requirements = page.requirements
+      .map((requirement, index) => ({ requirement, index }))
+      .sort((left, right) => {
+        const rank = ({ requirement }) => {
+          const targets = requirement.targetIds.filter((id) => regionRank.has(id));
+          return targets.length ? Math.min(...targets.map((id) => regionRank.get(id))) : -1;
+        };
+        return rank(left) - rank(right) || left.index - right.index;
+      })
+      .map(({ requirement }) => requirement);
+    const elements = requirements.map((requirement) => ({
+      key: `${page.id}.requirement.${requirement.id}`,
+      type: 'heading',
+      text: requirement.exactCopy ?? requirement.text,
+      editable: ['text', 'style'],
+      requirementId: requirement.id,
+      regionId: requirement.targetIds.find((id) => regionRank.has(id)),
+      sourceIds: structuredClone(requirement.sourceIds ?? []),
+      certainty: requirement.certainty,
+      evidence: structuredClone(requirement.evidence ?? []),
+      acceptance: structuredClone(requirement.acceptance ?? []),
+    }));
+    for (const action of page.actions) {
+      elements.push({
+        key: `${page.id}.action.${action.id}`,
+        type: 'button',
+        text: action.exactCopy ?? action.name,
+        editable: ['text', 'style', 'hidden', 'disabled', 'action'],
+        actionId: action.id,
+        regionId: action.regionId,
+        action: { type: 'navigate', target: action.toPageId },
+      });
+    }
+    return { id: page.id, title: page.name, state: 'default', elements };
+  });
+  const model = {
+    schemaVersion: 1,
+    id: 'execution-baseline-editable-demo',
+    product: structuredClone(product),
+    taxonomy: structuredClone(baseline.taxonomy),
+    coreJourneys: structuredClone(baseline.coreJourneys),
+    executionBaseline: baseline,
+    startPage: pages[0]?.id,
+    pages,
+  };
+  return validateModel(model);
+}
