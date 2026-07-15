@@ -2,6 +2,38 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
+function frontmatter(source) {
+  const match = source.match(/^---\n([\s\S]*?)\n---/);
+  assert.ok(match, 'frontmatter is required');
+  return Object.fromEntries(match[1].split('\n').map(line => {
+    const at = line.indexOf(':'); return [line.slice(0, at), line.slice(at + 1).trim()];
+  }));
+}
+
+test('Skill exposes one workflow identity with a concise domain-neutral what-and-when trigger', async () => {
+  const source = await readFile(new URL('../SKILL.md', import.meta.url), 'utf8');
+  const metadata = frontmatter(source);
+  assert.equal(metadata.name, 'prd-to-editable-demo');
+  assert.equal(metadata.intent, 'prd-to-editable-demo');
+  assert.equal(metadata.type, 'workflow');
+  assert.ok(metadata.description.length <= 200, `description is ${metadata.description.length} chars`);
+  assert.match(metadata.description, /PRD|requirement/i);
+  assert.match(metadata.description, /when|use/i);
+  assert.doesNotMatch(metadata.description, /商城|试穿|售后|结算/);
+});
+
+test('Skill orders fidelity contracts before generation and Inspire routing', async () => {
+  const source = await readFile(new URL('../SKILL.md', import.meta.url), 'utf8');
+  const ordered = [
+    'requirements-ir.md', 'clarification.md', 'visual-reference.md', 'execution-contract.md',
+    'fidelity-verification.md', 'run-inspire-pipeline.mjs',
+  ];
+  for (const name of ordered) assert.match(source, new RegExp(name.replace('.', '\\.'), 'i'));
+  for (let index = 1; index < ordered.length; index++) {
+    assert.ok(source.indexOf(ordered[index - 1]) < source.indexOf(ordered[index]), `${ordered[index - 1]} must precede ${ordered[index]}`);
+  }
+});
+
 test('Skill metadata clearly triggers PRD editable prototype requests', async () => {
   const source = await readFile(new URL('../SKILL.md', import.meta.url), 'utf8');
   assert.match(source, /^---\nname: prd-to-editable-demo\n/m);

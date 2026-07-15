@@ -14,6 +14,17 @@ required_files=(
   'references/interaction-design.md'
   'references/visual-quality.md'
   'references/quality-gates.md'
+  'references/clarification.md'
+  'references/execution-contract.md'
+  'references/visual-reference.md'
+  'references/fidelity-verification.md'
+  'schemas/requirements-ir-v2.schema.json'
+  'schemas/visual-reference-manifest.schema.json'
+  'src/requirements-ir-v2.mjs'
+  'src/clarification.mjs'
+  'src/execution-baseline.mjs'
+  'src/visual-references.mjs'
+  'src/fidelity-verifier.mjs'
   'src/capability-controller.mjs'
 )
 for file in "${required_files[@]}"; do
@@ -26,10 +37,18 @@ done
 zip -qr "$OUT" . \
   -x 'node_modules/*' \
   -x 'dist/*' \
-  -x '.git/*'
+  -x '.git/*' \
+  -x 'inspire-business-skill/*' \
+  -x 'inspire-business-skill-release/*'
 
 if ! unzip -l "$OUT" | awk '{print $NF}' | grep -qx 'SKILL.md'; then
   echo "Package validation failed: SKILL.md must be at ZIP root" >&2
+  exit 1
+fi
+
+skill_count="$(unzip -Z1 "$OUT" | awk '/(^|\/)SKILL\.md$/ { count++ } END { print count + 0 }')"
+if [[ "$skill_count" != '1' ]]; then
+  echo "Package validation failed: archive must contain exactly one SKILL.md" >&2
   exit 1
 fi
 

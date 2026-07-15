@@ -1,96 +1,65 @@
 ---
 name: prd-to-editable-demo
-description: Use when a user asks to turn a PRD, requirement document, screenshot, Figma flow, or product idea into a reviewable interactive prototype, especially when the result must remain editable in Inspire or needs native mobile product quality.
+description: Use when turning a PRD, requirements, screenshots, or product idea into a reviewable interactive prototype with traceable product and visual fidelity.
+intent: prd-to-editable-demo
+type: workflow
 ---
 
-# PRD To Editable Demo
+# PRD to Editable Demo
 
-这是 PRD 到可编辑交互原型的单 Skill、单一安装入口。先形成可追溯的需求模型，再生成和验收；专业场景始终以 Inspire 作为最终原型容器，避免生成多套互相竞争的结果。
+## Purpose
 
-## 工作原则
+把 PRD 转成可评审、可编辑、可真实走通的交互原型。首要目标是对 PRD、用户确认和明确绑定的图片参考保持可见产品保真；生成容器只是后续路由。此单 Skill、单一安装的公共 workflow 自带核心协议；未安装其他 Skill 不影响核心能力。
 
-1. 先产出可演示初版，推断与缺口单独记录；不得把 PRD 章节标题直接当页面。
-2. 需求模型至少包含用户角色、目标、业务对象、用户动作、状态/分支、事实证据、推断和缺口。
-3. 页面、控件和跳转必须可追溯到需求模型。禁止用“功能首页”“操作结果”“继续”等空洞占位词冒充理解。
-4. 简单、低保真评审可走本地 HTML 快速路径；复杂、多状态、高保真或品牌场景必须进入专业路径，不得静默降级。
-5. 核心交付不依赖宿主另行安装其他同类 Skill；未安装任何外部增强也不影响核心能力。运行时真实发现并成功调用的工具只能作为可验证增强，不能替代本 Skill 的责任。
+## Key Concepts
 
-执行前读取 [capability-policy.md](references/capability-policy.md)。完成语义结构后，按任务需要读取 [interaction-design.md](references/interaction-design.md)、[visual-quality.md](references/visual-quality.md) 和 [quality-gates.md](references/quality-gates.md)。这些文件是随包提供的专业能力协议，不是外部依赖。
+- **结构不是摘要**：无损理解不能降低信息密度。保留全部 PRD 信息并分类用途；默认只有 `product_requirement` 进入 UI。背景、研究、指标、优先级和交付元数据没有明确产品证据时绝不渲染。
+- **渐进澄清**：清晰 PRD 不重复提问。任何影响页面、流程或可见体验的关键缺口/冲突必须问用户，不能自行决定；每轮一个主题、最多 3 个决定，先给简短推荐，不展示长报告或完整 IR。
+- **冻结执行**：用户确认后建立版本化、冻结 baseline。不得再解释、优化或改写精确文案、布局、层级与流程；核心闭环不能被额外功能挤占。
+- **图片绑定**：每张图分别记录范围、属性、保真级别和排除项，不默认拼成 moodboard。`exact`、`high`、`local`、`inspiration` 含义不同，后三者须主观审查；冲突必须问用户。
+- **完成是行为事实**：声明、渲染、静态提示或不可达按钮都不算完成。视觉精致不能抵消产品错误。
 
-## 语义理解协议（必须先执行）
+## Application
 
-Agent 必须完整阅读 PRD，按 [requirements-ir.md](references/requirements-ir.md) 生成 `model-semantic` 需求结构，并为业务对象、用户动作和流转附上可在 PRD 中逐字找到的原文证据。事实、推断与缺口必须分开；不得把业务词表作为核心理解能力，也不得把某个评测案例的页面或状态写进通用规则。
+严格按以下顺序执行，并只在进入该阶段时读取对应协议：
 
-只有证据校验通过后才能进入生成：
+1. **无损 v2 理解**：完整阅读 [requirements-ir.md](references/requirements-ir.md)，建立源文覆盖、用途、层级、页面、区域、动作与核心旅程。
+2. **渐进澄清**：读取 [clarification.md](references/clarification.md)。若没有关键 blocker，直接继续；否则得到用户确认后更新 IR。
+3. **视觉绑定**：有图片时读取 [visual-reference.md](references/visual-reference.md)，逐图绑定，禁止无范围混合。
+4. **冻结 baseline**：读取 [execution-contract.md](references/execution-contract.md)，版本化冻结 `PRD module -> page position -> component -> state -> trigger -> next page/state`。
+5. **生成页面切片**：按 baseline 的页面、区域和层级顺序生成；精确文案逐字保留，非 UI 信息不渲染。
+6. **确定性保真检查**：读取 [fidelity-verification.md](references/fidelity-verification.md)，先检查层级、文案、范围、路径与泄漏。
+7. **验证实际最终交付物**：再读 [quality-gates.md](references/quality-gates.md)，在实际交付物中走完核心路径。本地 HTML 是默认终态，不要求发布；仅当用户明确要求在线或容器本身在线时检查 URL。
+8. **容器完成**：最后读取 [capability-policy.md](references/capability-policy.md)。简单评审可交付本地 HTML；高保真、品牌或用户要求 Inspire 编辑时才进入 Inspire 路由。
 
-```bash
-node bin/prd-to-editable-demo.mjs \
-  --prd <prd-path> \
-  --requirements <semantic-requirements.json> \
-  --out <output-directory>
-```
-
-无法生成语义结构时可省略 `--requirements`，但这只是低置信兜底：必须向用户标明 `heuristic-fallback` 及缺口，不得声称已完整理解 PRD 或达到专业设计基线。专业模式下，如果兜底解析没有得到明确的页面或页面流转，命令会写出 `requirements-blocker.json` 并以状态码 4 结束；Agent 必须先补齐语义需求结构再继续，不得把空壳交给 Inspire。
-
-## 统一入口
+统一入口：
 
 ```bash
-node bin/prd-to-editable-demo.mjs --prd <prd-path> --out <output-directory>
+node bin/prd-to-editable-demo.mjs --prd <prd-path> --requirements <requirements-ir.json> --out <output-directory>
 ```
 
-可重复传入 `--asset <素材路径>`，也可使用 `--intent` 和 `--url`。若输出 `specialist-handoff.json` 并以状态码 3 结束，这是专业接管信号，不是失败。
+宿主以 `model-semantic` 建立需求模型，明确业务对象并保存逐字原文证据；启发式解析只允许作为低置信兜底，不得以领域词表替代核心理解。关键证据不足时必须澄清，不得静默降级。专业接管信号写入 `specialist-handoff.json`。
 
-## 交付模式
-
-- **专业模式**：用户要求高保真、原生感、品牌质量或 Inspire 编辑时使用。Inspire 是正式最终容器；缺少授权或业务设计能力时保存进度并请求补齐，不得静默降级成本地正式交付。
-- **快速评审模式**：只有用户明确优先速度、接受可演示初版时使用。本地 HTML 仍须使用语义需求模型、完整主流程、内部交互与视觉规则以及可编辑运行时，并明确标记为非正式交付。
-
-## 专业交付到 Inspire
-
-这里有两个不能混用的 Skill 身份：
-
-- `prd-to-editable-demo` 是安装在 Aime、Codex 等宿主中的**外部 Agent 编排 Skill**，负责理解 PRD、路由和调用命令。
-- `<source:key@version>` 是 Inspire Builder 运行时可见的**Inspire Builder 业务设计 Skill**，负责生成时的业务视觉与交互约束。
-
-不得把 `private:prd-to-editable-demo` 作为 Inspire 的 `--skill` 参数；它不是 Builder 业务设计包。必须先从 `inspire-prototype skills visible --json` 中选择与当前业务匹配、当前账号确实可见的业务设计 Skill，并固定来源、版本与 package hash。通用编排 Skill 不得内置任何 owner、项目或业务专属的设计 Skill 标识；没有匹配能力时必须如实降级或阻塞品牌原生声明。
-
-获得交接包后执行：
+专业模式以 Inspire 作为唯一专业最终容器。专业路由不得把 `private:prd-to-editable-demo` 作为 `--skill`；它不是 Inspire Builder 业务设计 Skill。外部 Agent 编排 Skill 与 `<source:key@version>` 业务设计 Skill 身份分离；必须验证可见性，并确认 `activatedSkills` 与 `openedSkills` 同时包含预检的来源、key、版本和 package hash；未激活、未打开即失败：
 
 ```bash
-node bin/run-inspire-pipeline.mjs \
-  --handoff <specialist-handoff.json> \
-  --design-skill <source:key@version> \
-  --out <delivery-directory>
+node bin/run-inspire-pipeline.mjs --handoff <specialist-handoff.json> --design-skill <source:key@version> --out <delivery-directory>
 ```
 
-修改已有原型时直接基于最新已接受版本生成候选：
+迭代已有原型时追加 `--ref <assetId>`。用户可直接在 Inspire 中编辑；不得要求导出修改任务给另一个 Agent。缺少授权、品牌素材或业务设计能力时保存进度并明确阻塞/降级，不能静默把本地结果冒充专业终态。可发现工具只作可验证增强。
 
-```bash
-node bin/run-inspire-pipeline.mjs \
-  --handoff <specialist-handoff.json> \
-  --design-skill <source:key@version> \
-  --ref <assetId> \
-  --out <delivery-directory>
-```
+## Example
 
-必须先验证 Inspire 登录状态和指定版本的业务设计 Skill 可见。生成完成后，还必须核对返回的 `skillTrace.activatedSkills` 与 `skillTrace.openedSkills` 均包含预检时解析出的同一来源、key、版本和 package hash；未真正激活并打开时视为失败，即使平台返回了 `success` 和 `assetId` 也不得交付。生成后记录 `assetId`、父版本、预览链接和收纳箱链接；确定性审查失败时不得覆盖上一已接受版本。
+一个领域中立 PRD 同时写了“提交后显示原文 `Request received`”和“调研显示转化率可能提升 12%”。前者映射到结果页的精确文案与提交动作；后者保留为 `research_evidence`，不显示在 UI。若 PRD 未说明提交失败后留在当前页还是进入错误页，这会改变流程，先以“建议留在当前页并允许重试”为首选，仅询问该主题；确认后冻结 baseline，再生成并实走提交路径。
 
-## 原生设计底线
+## Common Pitfalls
 
-- Emoji 数量必须为 0，不得用星号、圆点或文字符号冒充 Icon。
-- 图标必须使用有来源、许可和业务角色记录的 SVG；缺失官方品牌资产时明确阻塞发布。
-- 禁止通用紫色渐变、桌面侧栏、假手机外壳、无来源品牌标识和未批准外链素材。
-- 必须覆盖 PRD 必要动作、成功/失败/空状态和清晰触控标签。
-- 自动规则通过不等于设计优秀；品牌原生感、视觉层级、素材质量和业务语义仍须主观视觉验收。
+- **反模式**：把 PRD 压成几个卡片，用背景、指标和优先级填满首页，再用“点击后提示成功”冒充闭环。
+- 不得将章节标题机械变成页面，不得展示完整 IR 给用户，不得在确认后“顺手优化”文案或布局。
+- Emoji 数量必须为 0；不得用文字或符号冒充 Icon。素材须有来源，品牌缺失时阻塞发布。
+- 自动检查通过不代表视觉优秀；品牌原生感、层级、密度和素材质量仍需主观视觉验收。
+- 兼容回收可用 `finalize-specialist.mjs` 保留 `index.original.html` 并由 `verify-specialist.mjs` 验证，但不能替代所选容器的正式终态。
 
-## 编辑与迭代
+## References
 
-用户对图片、Icon、位置、大小、文字和颜色的手动精修，直接在 Inspire 中完成并保留撤销。Agent 修改必须基于当前 `assetId` 创建新版本；不得要求用户导出修改任务再发给另一个 Agent，也不得声称平台未提供的节点级 API 能实现像素级自然语言修改。
-
-向用户交付 Inspire `previewUrl` 和 `inboxDeepLink`。本地目录保存 `inspire-plan.json`、`inspire-delivery.json`、`native-design-report.json` 和 `NEXT.md`，但不得生成与 Inspire 竞争的专业 `index.html`。
-
-## 本地快速路径与兼容回收
-
-只有简单评审任务才直接交付本地 `index.html`、`prototype.manifest.json`、`assumptions.md` 和补丁文件。若非 Inspire 专业能力只能产出本地 HTML bundle，可用 `finalize-specialist.mjs` 保留原版为 `index.original.html`，再运行 `verify-specialist.mjs`；该兼容路径不得替代 Inspire 专业终态。
-
-交付前运行 `npm test`、`npm run benchmark` 和 `npm run smoke`。专业能力缺失、设计 Skill 不可见、审查失败或主观验收未完成时，必须如实报告，不得宣称达到专业基线。
+交互和视觉细节按需读取 [interaction-design.md](references/interaction-design.md) 与 [visual-quality.md](references/visual-quality.md)。交付前运行测试、benchmark、smoke，并报告未能执行的真实浏览器检查。

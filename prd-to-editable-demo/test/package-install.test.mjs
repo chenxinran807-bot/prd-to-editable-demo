@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -17,13 +17,27 @@ test('packaged Skill installs without a wrapper directory and runs independently
   assert.match(readFileSync(join(installed, 'SKILL.md'), 'utf8'), /name: prd-to-editable-demo/);
   assert.match(readFileSync(join(installed, 'bin', 'verify-specialist.mjs'), 'utf8'), /verifySpecialistRender/);
   assert.match(readFileSync(join(installed, 'bin', 'run-inspire-pipeline.mjs'), 'utf8'), /createInspireClient/);
-  assert.match(readFileSync(join(installed, 'inspire-business-skill', 'SKILL.md'), 'utf8'), /Douyin Mall/);
+  const skillFiles = readdirSync(installed, { recursive: true }).filter(file => /(^|\/)SKILL\.md$/.test(file));
+  assert.deepEqual(skillFiles, ['SKILL.md']);
+  assert.equal(existsSync(join(installed, 'inspire-business-skill')), false);
+  assert.equal(existsSync(join(installed, 'inspire-business-skill-release')), false);
   for (const file of [
     'references/requirements-ir.md',
     'references/capability-policy.md',
     'references/interaction-design.md',
     'references/visual-quality.md',
     'references/quality-gates.md',
+    'references/clarification.md',
+    'references/execution-contract.md',
+    'references/visual-reference.md',
+    'references/fidelity-verification.md',
+    'schemas/requirements-ir-v2.schema.json',
+    'schemas/visual-reference-manifest.schema.json',
+    'src/requirements-ir-v2.mjs',
+    'src/clarification.mjs',
+    'src/execution-baseline.mjs',
+    'src/visual-references.mjs',
+    'src/fidelity-verifier.mjs',
     'src/capability-controller.mjs'
   ]) assert.ok(existsSync(join(installed, file)), `${file} must ship`);
   assert.match(readFileSync(join(installed, 'scripts', 'package-skill.sh'), 'utf8'), /missing standalone core file/);
