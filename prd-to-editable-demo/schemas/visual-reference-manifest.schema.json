@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "visual-reference-manifest.schema.json",
+  "title": "Visual Reference Manifest",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["id", "asset", "scope", "bindings", "exclude"],
+    "properties": {
+      "id": { "type": "string", "pattern": ".*\\S.*" },
+      "asset": { "type": "string", "pattern": ".*\\S.*" },
+      "scope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pageId"],
+        "properties": {
+          "pageId": { "type": "string", "pattern": ".*\\S.*" },
+          "regionId": { "type": "string", "pattern": ".*\\S.*" }
+        }
+      },
+      "bindings": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/binding" } },
+      "exclude": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/property" } },
+      "evidenceRegions": { "type": "array", "items": { "$ref": "#/$defs/evidenceRegion" } }
+    }
+  },
+  "$defs": {
+    "property": {
+      "type": "string",
+      "enum": [
+        "layout", "relative-position", "proportion", "spacing", "color", "typography",
+        "iconography", "imagery", "crop", "component", "copy-style", "interaction-feedback"
+      ]
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["property", "fidelity"],
+      "properties": {
+        "property": { "$ref": "#/$defs/property" },
+        "fidelity": { "type": "string", "enum": ["exact", "high", "local", "inspiration"] }
+      }
+    },
+    "evidenceRegion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "purpose", "boundingBox"],
+      "properties": {
+        "label": { "type": "string", "pattern": ".*\\S.*" },
+        "purpose": { "type": "string", "pattern": ".*\\S.*" },
+        "boundingBox": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": { "type": "number" }
+        }
+      }
+    }
+  }
+}
