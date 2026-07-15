@@ -46,6 +46,10 @@ function bindingSignatures(bindings) {
   return sortedStrings((bindings ?? []).map(binding => `${binding.property}\u0000${binding.fidelity}`));
 }
 
+function normalizedText(value) {
+  return typeof value === 'string' ? value.replace(/\s+/gu, ' ').trim() : '';
+}
+
 export function verifyFidelity({ baseline, model }) {
   if (!baseline || typeof baseline !== 'object') throw new TypeError('verifyFidelity requires a baseline');
   if (!model || typeof model !== 'object') throw new TypeError('verifyFidelity requires a model');
@@ -67,12 +71,24 @@ export function verifyFidelity({ baseline, model }) {
       .filter(requirement => requirement.uiEligible === false || BACKGROUND_PURPOSES.has(requirement.purpose)),
   ];
   const protectedRequirementIds = new Set(protectedRequirements.map(requirement => requirement.id));
-  const protectedSourceIds = new Set(protectedRequirements.flatMap(requirement => requirement.sourceIds ?? []));
+  const uiSourceIds = new Set(baselineRequirements(baseline)
+    .map(({ requirement }) => requirement)
+    .filter(requirement => requirement.uiEligible !== false && !BACKGROUND_PURPOSES.has(requirement.purpose))
+    .flatMap(requirement => requirement.sourceIds ?? []));
+  const protectedSourceIds = new Set(baseline.protectedSourceIds ?? protectedRequirements
+    .flatMap(requirement => requirement.sourceIds ?? []).filter(sourceId => !uiSourceIds.has(sourceId)));
+  const protectedTexts = (baseline.protectedContent ?? []).flatMap(item => [
+    { kind: 'statement', text: item.statement },
+    ...(item.sourceUnits ?? []).map(unit => ({ kind: 'source quote', text: unit.quote })),
+  ]).map(item => ({ ...item, text: normalizedText(item.text) })).filter(item => item.text.length >= 16);
   for (const { element } of elements) {
     if (protectedRequirementIds.has(element.requirementId)) fail(`background requirement ${element.requirementId} was rendered`);
     for (const sourceId of element.sourceIds ?? []) {
       if (protectedSourceIds.has(sourceId)) fail(`protected source ${sourceId} was rendered`);
     }
+    const visible = normalizedText(element.text);
+    const leaked = protectedTexts.find(item => visible.includes(item.text));
+    if (leaked) fail(`protected ${leaked.kind} was rendered`);
   }
   const validateTraceKeys = (kind, id, rendered) => {
     for (const { element } of rendered) {
@@ -150,6 +166,10 @@ export function verifyFidelity({ baseline, model }) {
 
   let reviewRequired = false;
   const applied = appliedVisuals(model);
+  const declaredVisualIds = new Set(baselineVisuals(baseline).map(({ reference }) => reference.id));
+  for (const reference of applied) {
+    if (!declaredVisualIds.has(reference.id)) fail(`undeclared visual reference ${reference.id}`);
+  }
   for (const { page, reference } of baselineVisuals(baseline)) {
     const matches = applied.filter(item => item.id === reference.id);
     if (matches.length !== 1) fail(`visual reference ${reference.id} is missing or duplicated`);

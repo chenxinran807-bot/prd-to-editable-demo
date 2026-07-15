@@ -22,6 +22,7 @@ function fixture() {
       { id: 'done', name: 'Done', regions: [], requirements: [], actions: [], visualReferences: [] },
     ],
     nonUiRequirements: [{ id: 'background', text: 'Market research', uiEligible: false, purpose: 'research_evidence', sourceIds: ['source-background'], targetIds: ['start'] }],
+    protectedContent: [{ requirementId: 'background', statement: 'Internal market research must never appear in the customer interface', sourceUnits: [{ id: 'source-background', quote: 'Confidential competitor evidence belongs only in internal planning' }] }],
   };
   const model = {
     taxonomy: structuredClone(baseline.taxonomy), coreJourneys: structuredClone(baseline.coreJourneys), startPage: 'start',
@@ -106,6 +107,12 @@ test('requires visual binding metadata and rejects claims for excluded propertie
   assert.throws(() => verifyFidelity(conflict), /visual reference visual.*excluded property color/i);
 });
 
+test('rejects undeclared applied visual reference entries', () => {
+  const data = fixture();
+  data.model.appliedVisualReferences.push({ id: 'undeclared', scope: { pageId: 'start' }, bindings: [{ property: 'layout', fidelity: 'exact' }], excludedProperties: [], elementKeys: ['copy'] });
+  assert.throws(() => verifyFidelity(data), /undeclared visual reference undeclared/i);
+});
+
 test('requires real in-scope element keys for every applied visual reference', () => {
   const missing = fixture(); missing.model.appliedVisualReferences[0].elementKeys = [];
   assert.throws(() => verifyFidelity(missing), /visual reference visual.*non-empty elementKeys/i);
@@ -149,6 +156,25 @@ test('rejects canonical background source IDs even without a requirementId', () 
   assert.throws(() => verifyFidelity(data), /protected source source-background.*rendered/i);
   const clean = fixture(); clean.model.pages[0].elements.push({ key: 'same-words', text: 'Market research', sourceIds: ['source-ui'] });
   assert.doesNotThrow(() => verifyFidelity(clean));
+});
+
+test('rejects complete protected statements and source quotes without metadata but not common words', () => {
+  for (const text of [
+    'Internal market research must never appear in the customer interface',
+    'Summary: Confidential competitor evidence belongs only in internal planning.',
+  ]) {
+    const leaked = fixture(); leaked.model.pages[0].elements.push({ key: `leak-${leaked.model.pages[0].elements.length}`, text });
+    assert.throws(() => verifyFidelity(leaked), /protected (?:statement|source quote).*rendered/i);
+  }
+  const common = fixture(); common.model.pages[0].elements.push({ key: 'common', text: 'Research options' });
+  assert.doesNotThrow(() => verifyFidelity(common));
+});
+
+test('allows a source ID shared with a UI-eligible requirement', () => {
+  const data = fixture();
+  data.baseline.pages[0].requirements[1].sourceIds = ['source-background'];
+  data.model.pages[0].elements[1].sourceIds = ['source-background'];
+  assert.doesNotThrow(() => verifyFidelity(data));
 });
 
 test('requires unique non-empty element keys for requirement and action traceability', () => {

@@ -156,6 +156,21 @@ export function compileExecutionBaseline(ir, visualReferences, previous = null, 
     coreJourneys: clone(coreJourneys),
     nonUiRequirements: clone(requirements.filter((requirement) => requirement.uiEligible === false
       || ['business_context', 'research_evidence', 'delivery_metadata'].includes(requirement.purpose))),
+    protectedContent: requirements
+      .filter((requirement) => requirement.uiEligible === false
+        || ['business_context', 'research_evidence', 'delivery_metadata'].includes(requirement.purpose))
+      .map((requirement) => ({
+        requirementId: requirement.id,
+        statement: requirement.statement ?? requirement.text,
+        sourceUnits: clone((ir.sourceUnits ?? []).filter((unit) => (requirement.sourceIds ?? []).includes(unit.id))),
+      })),
+    protectedSourceIds: [...new Set(requirements
+      .filter((requirement) => requirement.uiEligible === false
+        || ['business_context', 'research_evidence', 'delivery_metadata'].includes(requirement.purpose))
+      .flatMap((requirement) => requirement.sourceIds ?? []))]
+      .filter((sourceId) => !requirements.some((requirement) => requirement.uiEligible !== false
+        && !['business_context', 'research_evidence', 'delivery_metadata'].includes(requirement.purpose)
+        && (requirement.sourceIds ?? []).includes(sourceId))),
     unresolvedNonBlocking: clone(blockers.filter((item) => !isResolved(item) && blockerPriority(item) === 'P2')),
     pages: slices,
   };

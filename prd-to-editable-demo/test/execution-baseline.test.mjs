@@ -6,6 +6,10 @@ import { executionBaselineToModel, semanticRequirementsToModel } from '../src/se
 function fixture() {
   return {
     schemaVersion: 2,
+    sourceUnits: [
+      { id: 'src-1', purpose: 'product_requirement', quote: 'Visible product requirement source quote' },
+      { id: 'src-2', purpose: 'business_context', quote: 'Confidential market background must stay out of the interface' },
+    ],
     taxonomy: [{ id: 'tax-1', label: 'Account', parentId: null }],
     coreJourneys: [{ id: 'journey-1', name: 'Complete', actionIds: ['act-1'], startPageId: 'page-a', expectedEndPageId: 'page-b' }],
     pages: [
@@ -43,12 +47,19 @@ test('compiles ordered frozen page slices without background requirements', () =
   assert.deepEqual(baseline.pages[0].regions.map(({ id }) => id), ['region-first', 'region-late']);
   assert.deepEqual(baseline.pages[0].requirements.map(({ id }) => id), ['req-page', 'req-first', 'req-late']);
   assert.deepEqual(baseline.nonUiRequirements, [ir.requirements.find(({ id }) => id === 'req-background')]);
+  assert.deepEqual(baseline.protectedContent, [{
+    requirementId: 'req-background', statement: 'Business context',
+    sourceUnits: [{ id: 'src-2', purpose: 'business_context', quote: 'Confidential market background must stay out of the interface' }],
+  }]);
+  assert.deepEqual(baseline.protectedSourceIds, ['src-2']);
   assert.deepEqual(baseline.pages[0].visualReferences[0].scope, { pageId: 'page-a', regionId: 'region-first' });
   assert.equal(baseline.pages[0].requirements[0].exactCopy, 'Exact page copy');
   assert.ok(Object.isFrozen(baseline));
   assert.ok(Object.isFrozen(baseline.pages[0].requirements[0].evidence));
   assert.ok(Object.isFrozen(baseline.nonUiRequirements));
   assert.ok(Object.isFrozen(baseline.nonUiRequirements[0].sourceIds));
+  assert.ok(Object.isFrozen(baseline.protectedContent[0].sourceUnits[0]));
+  assert.ok(Object.isFrozen(baseline.protectedSourceIds));
   ir.taxonomy[0].label = 'mutated';
   assert.equal(baseline.taxonomy[0].label, 'Account');
 });
@@ -128,6 +139,7 @@ test('builds model in baseline order with exact copy and declared actions only',
   assert.equal(model.pages[0].elements[1].requirement.uiEligible, true);
   assert.equal(model.pages[0].elements[1].requirement.exactCopy, 'First exact');
   assert.equal(model.pages[0].elements[3].actionId, 'act-1');
+  assert.equal(model.pages.flatMap(page => page.elements).some(element => element.requirementId === 'req-background'), false);
   assert.deepEqual(model.pages[0].elements[3].action, { type: 'navigate', target: 'page-b' });
   assert.deepEqual(model.taxonomy, baseline.taxonomy);
   assert.deepEqual(model.coreJourneys, baseline.coreJourneys);
