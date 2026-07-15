@@ -19,5 +19,7 @@ P0/P1 关键 blocker 未获得用户答案时，不得冻结 baseline。清晰 P
 ## Domain-neutral JSON example
 
 ```json
-{"theme":"failure-path","questions":[{"id":"b1","theme":"failure-path","requirementId":"r1","priority":"P0","question":"失败后应如何处理？","impact":"改变失败状态的页面与返回路径","recommendation":"留在当前页并允许重试","options":["留在当前页并重试","进入独立错误页"]}]}
+{"theme":"failure-path","questions":[{"id":"b1","theme":"failure-path","requirementId":"r1","priority":"P0","question":"失败后应如何处理？","impact":"改变失败状态的页面与返回路径","recommendation":"留在当前页并允许重试","options":["留在当前页并重试","进入独立错误页"],"resolutions":[{"option":"留在当前页并重试","patches":[{"entity":"action","id":"a1","field":"visibleFeedback","value":"显示错误并允许重试"}]},{"option":"进入独立错误页","patches":[{"entity":"action","id":"a1","field":"toPageId","value":"p-error"}]}]}]}
 ```
+
+回答必须精确匹配一个 option；对应 typed patches 只能修改与 blocker requirement 相关的允许字段。确认历史仅写入 `confirmation-record.json`，不污染可复用 IR。图片冲突不走此补丁协议：用户更新视觉 manifest 后原命令重跑。

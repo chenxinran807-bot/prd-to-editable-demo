@@ -31,6 +31,6 @@
   "regions": [{"id":"g1","pageId":"p1","name":"Actions","layout":{"mode":"stack","alignment":"start"},"position":{"order":0,"anchor":"content"},"behavior":{"scroll":"page","sticky":false},"prominence":{"level":"primary","rationale":"Core task"}}],
   "actions": [{"id":"a1","name":"Submit","trigger":"activate submit","visibleFeedback":"Receipt appears","stateChange":"request becomes submitted","fromPageId":"p1","toPageId":"p2","regionId":"g1","requirementIds":["r1"]}],
   "coreJourneys": [{"id":"j1","name":"Submit request","actionIds":["a1"],"startPageId":"p1","expectedEndPageId":"p2"}],
-  "blockers": [{"id":"b1","text":"Choose failure behavior","certainty":"missing","sourceIds":[],"requirementId":"r1","theme":"failure-path","priority":"P1","impact":"Changes the visible failure flow","recommendation":"Keep the user on the form","options":["Stay and retry","Open an error page"]}]
+  "blockers": [{"id":"b1","text":"Choose failure behavior","certainty":"missing","sourceIds":[],"requirementId":"r1","theme":"failure-path","priority":"P1","impact":"Changes the visible failure flow","recommendation":"Keep the user on the form","options":["Stay and retry","Open an error page"],"resolutions":[{"option":"Stay and retry","patches":[{"entity":"action","id":"a1","field":"visibleFeedback","value":"Show error and retry"}]},{"option":"Open an error page","patches":[{"entity":"action","id":"a1","field":"toPageId","value":"p2"}]}]}]
 }
 ```

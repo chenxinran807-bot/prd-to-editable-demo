@@ -185,7 +185,7 @@ export function validateRequirementsIrV2(input, source) {
 
   uniqueIds(input.blockers, 'blockers');
   for (const blocker of input.blockers) {
-    keys(blocker, ['id', 'text', 'certainty', 'sourceIds', 'requirementId', 'theme', 'priority', 'impact', 'recommendation', 'options'], `blocker ${blocker.id}`);
+    keys(blocker, ['id', 'text', 'certainty', 'sourceIds', 'requirementId', 'theme', 'priority', 'impact', 'recommendation', 'options', 'resolutions'], `blocker ${blocker.id}`);
     string(blocker.text, `blocker ${blocker.id} text`);
     string(blocker.requirementId, `blocker ${blocker.id} requirementId`);
     if (!requirementIds.has(blocker.requirementId)) fail(`blocker ${blocker.id} references unknown requirement ${blocker.requirementId}`);
@@ -195,6 +195,28 @@ export function validateRequirementsIrV2(input, source) {
     if (blocker.recommendation.length > 160) fail(`blocker ${blocker.id} recommendation must be concise`);
     strings(blocker.options, `blocker ${blocker.id} options`);
     if (blocker.options.length < 2 || new Set(blocker.options.map(item => item.trim())).size !== blocker.options.length) fail(`blocker ${blocker.id} options must contain at least two unique values`);
+    if (!Array.isArray(blocker.resolutions)) fail(`blocker ${blocker.id} resolutions must be an array`);
+    const resolutionOptions = new Set();
+    for (const [index, resolution] of blocker.resolutions.entries()) {
+      object(resolution, `blocker ${blocker.id} resolution ${index}`); keys(resolution, ['option', 'patches'], `blocker ${blocker.id} resolution ${index}`);
+      string(resolution.option, `blocker ${blocker.id} resolution option`); if (resolutionOptions.has(resolution.option)) fail(`blocker ${blocker.id} has duplicate resolution option`); resolutionOptions.add(resolution.option);
+      if (!Array.isArray(resolution.patches) || !resolution.patches.length) fail(`blocker ${blocker.id} resolution patches must be non-empty`);
+      for (const patch of resolution.patches) {
+        object(patch, `blocker ${blocker.id} patch`); keys(patch, ['entity', 'id', 'field', 'value'], `blocker ${blocker.id} patch`);
+        string(patch.entity, 'patch entity'); string(patch.id, 'patch id'); string(patch.field, 'patch field');
+        const allowed = { requirement: ['exactCopy','componentType','visibleState','targetIds','acceptanceCriteria','text'], action: ['toPageId','regionId','trigger','visibleFeedback','stateChange'], region: ['layout','behavior','prominence'], page: ['regionIds','name'] };
+        if (!allowed[patch.entity]?.includes(patch.field)) fail(`patch field ${patch.entity}.${patch.field} is not allowed`);
+        const collection = input[`${patch.entity}s`]; const target = collection?.find(item => item.id === patch.id); if (!target) fail(`patch references unknown ${patch.entity} ${patch.id}`);
+        const related = patch.entity === 'requirement' ? patch.id === blocker.requirementId
+          : patch.entity === 'action' ? target.requirementIds.includes(blocker.requirementId)
+          : input.requirements.find(item => item.id === blocker.requirementId).targetIds.some(id => patch.entity === 'region' ? id === patch.id : id === patch.id || input.regions.find(region => region.id === id)?.pageId === patch.id);
+        if (!related) fail(`patch target ${patch.entity} ${patch.id} is unrelated to blocker requirement ${blocker.requirementId}`);
+        if (['targetIds','acceptanceCriteria','regionIds'].includes(patch.field)) strings(patch.value, `patch ${patch.field}`);
+        else if (['layout','behavior','prominence'].includes(patch.field)) object(patch.value, `patch ${patch.field}`);
+        else string(patch.value, `patch ${patch.field}`);
+      }
+    }
+    if (blocker.options.length !== resolutionOptions.size || blocker.options.some(option => !resolutionOptions.has(option))) fail(`blocker ${blocker.id} options and resolutions must match exactly`);
     references(blocker.sourceIds, sourceIds, `blocker ${blocker.id} sourceIds`, 'sourceUnit');
   }
   return structuredClone(input);

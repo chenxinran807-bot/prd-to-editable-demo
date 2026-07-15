@@ -50,7 +50,7 @@ function writeV2Fixture(root, { blockers = [], background = true } = {}) {
 test('v2 blocker removes stale output and emits a bounded clarification artifact', () => {
   const root = mkdtempSync(join(tmpdir(), 'v2-blocker-'));
   const { prd, requirements } = writeV2Fixture(root, { blockers: [
-    ...['persistence', 'retry', 'completion', 'cancellation'].map((name, index) => ({ id: `b${index + 1}`, text: `Choose ${name} behavior`, certainty: 'missing', sourceIds: [], requirementId: 'r1', theme: 'core-flow', priority: index ? 'P1' : 'P0', impact: 'Changes the visible flow', recommendation: 'Use the first explicit path', options: ['Keep current page', 'Open a separate page'] }))
+    ...['persistence', 'retry', 'completion', 'cancellation'].map((name, index) => ({ id: `b${index + 1}`, text: `Choose ${name} behavior`, certainty: 'missing', sourceIds: [], requirementId: 'r1', theme: 'core-flow', priority: index ? 'P1' : 'P0', impact: 'Changes the visible flow', recommendation: 'Use the first explicit path', options: ['Keep current page', 'Open a separate page'], resolutions: [{ option: 'Keep current page', patches: [{ entity: 'requirement', id: 'r1', field: 'visibleState', value: 'current' }] }, { option: 'Open a separate page', patches: [{ entity: 'requirement', id: 'r1', field: 'visibleState', value: 'separate' }] }] }))
   ] });
   const out = join(root, 'out'); mkdirSync(out); writeFileSync(join(out, 'index.html'), 'stale');
   const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--out', out], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
@@ -77,6 +77,16 @@ test('confirmed v2 local generation writes fidelity artifacts and excludes backg
   assert.equal(manifest.pages.flatMap(page => page.elements).some(element => /Internal research context/.test(element.text)), false);
   assert.match(readFileSync(join(out, 'fidelity-report.md'), 'utf8'), /passed/);
   assert.match(readFileSync(join(out, 'fidelity-report.md'), 'utf8'), /requirements/);
+});
+
+test('P2-only blocker does not block and remains in the frozen baseline', () => {
+  const root = mkdtempSync(join(tmpdir(), 'v2-p2-'));
+  const p2 = { id: 'p2', text: 'Optional label choice', certainty: 'missing', sourceIds: [], requirementId: 'r1', theme: 'copy', priority: 'P2', impact: 'Minor label variation', recommendation: 'Keep current label', options: ['Keep label', 'Shorten label'], resolutions: [{ option: 'Keep label', patches: [{ entity: 'requirement', id: 'r1', field: 'exactCopy', value: 'Submit exactly' }] }, { option: 'Shorten label', patches: [{ entity: 'requirement', id: 'r1', field: 'exactCopy', value: 'Submit' }] }] };
+  const { prd, requirements } = writeV2Fixture(root, { blockers: [p2] }); const out = join(root, 'out');
+  const result = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--intent', '快速评审初版，优先速度', '--out', out], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  const baseline = JSON.parse(readFileSync(join(out, 'requirements-baseline.json'), 'utf8'));
+  assert.deepEqual(baseline.unresolvedNonBlocking.map(item => item.id), ['p2']);
 });
 
 test('rejects malformed confirmations and visual references as arrays', () => {
@@ -145,24 +155,25 @@ test('fidelity artifacts use the actual subjective-review verification result', 
 test('confirmations update only the blocker-linked requirements', () => {
   const root = mkdtempSync(join(tmpdir(), 'v2-links-'));
   const { prd, requirements } = writeV2Fixture(root, { blockers: [
-    { id: 'b1', text: 'Confirm submit', certainty: 'missing', sourceIds: [], requirementId: 'r1', theme: 'flow', priority: 'P0', impact: 'Changes submission', recommendation: 'Use submit', options: ['Submit', 'Cancel'] },
-    { id: 'b2', text: 'Confirm context', certainty: 'missing', sourceIds: [], requirementId: 'r2', theme: 'flow', priority: 'P1', impact: 'Changes context', recommendation: 'Keep hidden', options: ['Keep hidden', 'Show'] }
+    { id: 'b1', text: 'Confirm submit', certainty: 'missing', sourceIds: [], requirementId: 'r1', theme: 'flow', priority: 'P0', impact: 'Changes submission', recommendation: 'Use submit', options: ['Submit', 'Cancel'], resolutions: [{ option: 'Submit', patches: [{ entity: 'requirement', id: 'r1', field: 'visibleState', value: 'submitted' }] }, { option: 'Cancel', patches: [{ entity: 'requirement', id: 'r1', field: 'visibleState', value: 'cancelled' }] }] },
+    { id: 'b2', text: 'Confirm context', certainty: 'missing', sourceIds: [], requirementId: 'r2', theme: 'flow', priority: 'P1', impact: 'Changes context', recommendation: 'Keep hidden', options: ['Keep hidden', 'Show'], resolutions: [{ option: 'Keep hidden', patches: [{ entity: 'requirement', id: 'r2', field: 'text', value: 'Hidden context' }] }, { option: 'Show', patches: [{ entity: 'requirement', id: 'r2', field: 'text', value: 'Visible context' }] }] }
   ] });
   const confirmations = join(root, 'confirmations.json');
-  writeFileSync(confirmations, JSON.stringify([{ blockerId: 'b1', answer: 'yes', answeredAt: 'now' }]));
+  writeFileSync(confirmations, JSON.stringify([{ blockerId: 'b1', answer: 'Submit', answeredAt: 'now' }]));
   const first = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--confirmations', confirmations, '--out', join(root, 'blocked')], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
   assert.equal(first.status, 5, first.stderr);
   const turn = JSON.parse(readFileSync(join(root, 'blocked', 'clarification-required.json'), 'utf8')).turn;
   assert.equal(turn.questions[0].requirementId, 'r2');
   writeFileSync(confirmations, JSON.stringify([
-    { blockerId: 'b1', answer: 'yes', answeredAt: 'now' }, { blockerId: 'b2', answer: 'no', answeredAt: 'later' }
+    { blockerId: 'b1', answer: 'Submit', answeredAt: 'now' }, { blockerId: 'b2', answer: 'Keep hidden', answeredAt: 'later' }
   ]));
   const out = join(root, 'out');
   const second = spawnSync(process.execPath, ['bin/prd-to-editable-demo.mjs', '--prd', prd, '--requirements-v2', requirements, '--confirmations', confirmations, '--intent', '快速评审初版，优先速度', '--out', out], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
   assert.equal(second.status, 0, second.stderr);
   const ir = JSON.parse(readFileSync(join(out, 'requirements-ir.json'), 'utf8'));
-  assert.deepEqual(ir.requirements.find(item => item.id === 'r1').confirmations.map(item => item.blockerId), ['b1']);
-  assert.deepEqual(ir.requirements.find(item => item.id === 'r2').confirmations.map(item => item.blockerId), ['b2']);
+  assert.equal(ir.requirements.find(item => item.id === 'r1').visibleState, 'submitted');
+  assert.equal(ir.requirements.find(item => item.id === 'r2').text, 'Hidden context');
+  assert.equal('confirmations' in ir.requirements[0], false);
 });
 
 test('rejects dangerous output paths without touching inputs or the package', () => {

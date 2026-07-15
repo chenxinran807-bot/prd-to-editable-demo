@@ -18,7 +18,8 @@ function validateBlockers(blockers) {
   const ids = new Set();
   blockers.forEach((blocker, index) => {
     if (!blocker || typeof blocker !== 'object' || Array.isArray(blocker)) fail(`blockers[${index}] must be an object`);
-    for (const field of ['id', 'theme', 'priority', 'requirementId', 'question']) nonEmptyString(blocker[field], `blockers[${index}].${field}`);
+    for (const field of ['id', 'theme', 'priority', 'requirementId']) nonEmptyString(blocker[field], `blockers[${index}].${field}`);
+    nonEmptyString(blocker.question ?? blocker.text, `blockers[${index}].question`);
     if (!PRIORITY_RANK.has(blocker.priority)) fail(`blockers[${index}].priority must be P0, P1, or P2`);
     if (blocker.options !== undefined) {
       if (!Array.isArray(blocker.options) || blocker.options.length === 0) fail(`blockers[${index}].options must be a non-empty array`);
@@ -36,9 +37,11 @@ function validateBlockers(blockers) {
 }
 
 function questionFrom(blocker) {
-  return Object.fromEntries(QUESTION_FIELDS
+  const result = Object.fromEntries(QUESTION_FIELDS
     .filter((field) => blocker[field] !== undefined)
     .map((field) => [field, structuredClone(blocker[field])]));
+  result.question ??= blocker.text;
+  return result;
 }
 
 export function buildClarificationTurn(blockers) {
@@ -98,12 +101,22 @@ export function applyClarifications(ir, answers) {
   result.blockers = result.blockers.filter(({ id }) => !answeredIds.has(id));
 
   for (const answer of answers) {
-    const requirementId = blockerById.get(answer.blockerId).requirementId;
+    const selectedBlocker = blockerById.get(answer.blockerId);
+    const requirementId = selectedBlocker.requirementId;
     const requirement = result.requirements.find(({ id }) => id === requirementId);
     if (!requirement) continue;
-    if (requirement.confirmations === undefined) requirement.confirmations = [];
-    if (!Array.isArray(requirement.confirmations)) fail(`requirement ${requirementId}.confirmations must be an array`);
-    requirement.confirmations.push(structuredClone(answer));
+    if (Array.isArray(selectedBlocker.resolutions)) {
+      const resolution = selectedBlocker.resolutions.find(({ option }) => option === answer.answer);
+      if (!resolution) fail(`answer for blocker ${answer.blockerId} must equal a supplied option`);
+      for (const patch of resolution.patches) {
+        const target = result[`${patch.entity}s`]?.find(({ id }) => id === patch.id);
+        if (!target) fail(`patch target ${patch.entity} ${patch.id} is missing`);
+        target[patch.field] = structuredClone(patch.value);
+      }
+    } else {
+      if (requirement.confirmations === undefined) requirement.confirmations = [];
+      requirement.confirmations.push(structuredClone(answer));
+    }
   }
 
   for (const requirement of result.requirements) {

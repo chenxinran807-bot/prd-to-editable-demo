@@ -70,15 +70,15 @@ export async function main(argv = process.argv.slice(2)) {
   let v2Context = null;
   if (options.requirementsV2) {
     let ir = validateRequirementsIrV2(await readJson(options.requirementsV2, 'requirements v2'), source);
-    const prepareClarifications = value => ({ ...value, blockers: value.blockers.map(blocker => ({ ...blocker, question: blocker.text })) });
     const ensureArray = (value, label) => {
       if (!Array.isArray(value)) throw new TypeError(`${label} must be an array`);
       return value;
     };
     const confirmations = ensureArray(options.confirmations ? await readJson(options.confirmations, 'confirmations') : [], 'confirmations');
-    ir = prepareClarifications(ir);
     ir = applyClarifications(ir, confirmations);
-    const turn = buildClarificationTurn(ir.blockers);
+    ir = validateRequirementsIrV2(ir, source);
+    const blockingClarifications = ir.blockers.filter(blocker => blocker.priority === 'P0' || blocker.priority === 'P1');
+    const turn = buildClarificationTurn(blockingClarifications);
     if (turn) {
       await publishDirectory(output, dir => writeFile(`${dir}/clarification-required.json`, `${JSON.stringify({
           schemaVersion: 1, status: 'clarification-required', turn, remaining: ir.blockers.length,
