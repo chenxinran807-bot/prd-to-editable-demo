@@ -9,6 +9,31 @@ const reference = (id, property = 'layout', fidelity = 'exact', scope = { pageId
   id, asset: `assets/${id}.png`, scope, bindings: [binding(property, fidelity)], exclude: [],
 });
 
+function validateWithSchema(schema, instance) {
+  const errors = [];
+  function visit(rule, value, path = '$') {
+    if (rule.$ref) return visit(rule.$ref.split('/').slice(1).reduce((node, key) => node[key], schema), value, path);
+    if (rule.type === 'array') {
+      if (!Array.isArray(value)) return errors.push(`${path} must be array`);
+      if (rule.minItems !== undefined && value.length < rule.minItems) errors.push(`${path} too short`);
+      if (rule.maxItems !== undefined && value.length > rule.maxItems) errors.push(`${path} too long`);
+      if (rule.uniqueItems && new Set(value.map((item) => JSON.stringify(item))).size !== value.length) errors.push(`${path} duplicates`);
+      value.forEach((item, index) => visit(rule.items, item, `${path}[${index}]`));
+    } else if (rule.type === 'object') {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return errors.push(`${path} must be object`);
+      for (const required of rule.required ?? []) if (!(required in value)) errors.push(`${path}.${required} required`);
+      if (rule.additionalProperties === false) for (const key of Object.keys(value)) if (!(key in (rule.properties ?? {}))) errors.push(`${path}.${key} unknown`);
+      for (const [key, child] of Object.entries(rule.properties ?? {})) if (key in value) visit(child, value[key], `${path}.${key}`);
+    } else if (rule.type === 'string') {
+      if (typeof value !== 'string') errors.push(`${path} must be string`);
+      else if (rule.pattern && !new RegExp(rule.pattern).test(value)) errors.push(`${path} pattern`);
+    } else if (rule.type === 'number' && (typeof value !== 'number' || !Number.isFinite(value))) errors.push(`${path} must be finite number`);
+    if (rule.enum && !rule.enum.includes(value)) errors.push(`${path} enum`);
+  }
+  visit(schema, instance);
+  return errors;
+}
+
 test('accepts separate color-only and layout-only references', () => {
   assert.doesNotThrow(() => validateVisualReferences([
     reference('color-ref', 'color', 'high'),
@@ -39,6 +64,19 @@ test('accepts exact bindings for non-overlapping regions', () => {
 test('allows high-fidelity references to coexist at one scope', () => {
   assert.doesNotThrow(() => validateVisualReferences([
     reference('one', 'layout', 'high'), reference('two', 'layout', 'high'),
+  ]));
+});
+
+test('allows exact and non-exact bindings to coexist at one scope', () => {
+  assert.doesNotThrow(() => validateVisualReferences([
+    reference('exact', 'layout'), reference('high', 'layout', 'high'),
+  ]));
+});
+
+test('allows exact bindings on different pages', () => {
+  assert.doesNotThrow(() => validateVisualReferences([
+    reference('one', 'layout', 'exact', { pageId: 'page-1' }),
+    reference('two', 'layout', 'exact', { pageId: 'page-2' }),
   ]));
 });
 
@@ -73,6 +111,23 @@ test('resolves page and region ownership against a validated context', () => {
     reference('one', 'layout', 'high', { pageId: 'page-2', regionId: 'hero' }),
   ], context), /belongs to page page-1/i);
   assert.throws(() => validateVisualReferences([], { pageIds: ['page-1', 'page-1'], regions: [] }), /duplicate context page/i);
+  assert.throws(() => validateVisualReferences([
+    reference('one', 'layout', 'high', { pageId: 'page-1', regionId: 'missing' }),
+  ], context), /unknown region/i);
+  assert.throws(() => validateVisualReferences([], {
+    pageIds: ['page-1'], regions: [{ id: 'hero', pageId: 'page-1' }, { id: 'hero', pageId: 'page-1' }],
+  }), /duplicate context region/i);
+});
+
+test('rejects missing required fields and unknown reference fields', () => {
+  for (const field of ['id', 'asset', 'scope', 'bindings', 'exclude']) {
+    const input = reference('one');
+    delete input[field];
+    assert.throws(() => validateVisualReferences([input]), new RegExp(field, 'i'));
+  }
+  const input = reference('one');
+  input.unexpected = true;
+  assert.throws(() => validateVisualReferences([input]), /unknown property unexpected/i);
 });
 
 test('validates evidence region labels, purposes, and finite four-number boxes', () => {
@@ -87,6 +142,14 @@ test('validates evidence region labels, purposes, and finite four-number boxes',
   const blank = structuredClone(input);
   blank.evidenceRegions[0].purpose = '  ';
   assert.throws(() => validateVisualReferences([blank]), /purpose must be a non-empty string/i);
+  for (const field of ['label', 'purpose']) {
+    const missing = structuredClone(input);
+    delete missing.evidenceRegions[0][field];
+    assert.throws(() => validateVisualReferences([missing]), new RegExp(`${field} must be a non-empty string`, 'i'));
+    const blankField = structuredClone(input);
+    blankField.evidenceRegions[0][field] = '   ';
+    assert.throws(() => validateVisualReferences([blankField]), new RegExp(`${field} must be a non-empty string`, 'i'));
+  }
 });
 
 test('returns a deep clone without mutating input', () => {
@@ -101,6 +164,13 @@ test('returns a deep clone without mutating input', () => {
   assert.notStrictEqual(result[0].evidenceRegions[0].boundingBox, input[0].evidenceRegions[0].boundingBox);
 });
 
+test('normalizes an omitted evidenceRegions collection to an empty array', () => {
+  const input = [reference('one')];
+  const result = validateVisualReferences(input);
+  assert.deepEqual(result[0].evidenceRegions, []);
+  assert.equal('evidenceRegions' in input[0], false);
+});
+
 test('visual reference manifest schema loads as valid JSON with strict enums and objects', () => {
   const schema = JSON.parse(readFileSync(new URL('../schemas/visual-reference-manifest.schema.json', import.meta.url), 'utf8'));
   assert.equal(schema.type, 'array');
@@ -112,4 +182,26 @@ test('visual reference manifest schema loads as valid JSON with strict enums and
   assert.deepEqual(schema.$defs.binding.properties.fidelity.enum, ['exact', 'high', 'local', 'inspiration']);
   assert.equal(schema.$defs.binding.properties.property.$ref, '#/$defs/property');
   assert.equal(schema.$defs.property.enum.length, 12);
+  assert.equal(schema.items.properties.bindings.uniqueItems, true);
+  assert.equal(schema.items.properties.exclude.uniqueItems, true);
+});
+
+test('schema behavior accepts a valid manifest and rejects representative invalid instances', () => {
+  const schema = JSON.parse(readFileSync(new URL('../schemas/visual-reference-manifest.schema.json', import.meta.url), 'utf8'));
+  const valid = [reference('one')];
+  valid[0].evidenceRegions = [{ label: 'Header', purpose: 'Alignment evidence', boundingBox: [0, 0, 100, 80] }];
+  assert.deepEqual(validateWithSchema(schema, valid), []);
+
+  const invalid = [];
+  const missing = reference('missing'); delete missing.asset; invalid.push([missing]);
+  const whitespace = reference('blank'); whitespace.scope.pageId = '   '; invalid.push([whitespace]);
+  const nestedExtra = structuredClone(valid); nestedExtra[0].scope.extra = true; invalid.push(nestedExtra);
+  const evidenceExtra = structuredClone(valid); evidenceExtra[0].evidenceRegions[0].extra = true; invalid.push(evidenceExtra);
+  const shortBox = structuredClone(valid); shortBox[0].evidenceRegions[0].boundingBox = [0, 1, 2]; invalid.push(shortBox);
+  const nonNumberBox = structuredClone(valid); nonNumberBox[0].evidenceRegions[0].boundingBox = [0, 1, 2, '3']; invalid.push(nonNumberBox);
+  const badProperty = [reference('property', 'shadow')]; invalid.push(badProperty);
+  const badFidelity = [reference('fidelity', 'layout', 'pixel-perfect')]; invalid.push(badFidelity);
+  const duplicateBindings = [reference('bindings')]; duplicateBindings[0].bindings.push(binding('layout')); invalid.push(duplicateBindings);
+  const duplicateExclusions = [reference('exclude')]; duplicateExclusions[0].exclude = ['color', 'color']; invalid.push(duplicateExclusions);
+  for (const instance of invalid) assert.notDeepEqual(validateWithSchema(schema, instance), [], JSON.stringify(instance));
 });

@@ -121,5 +121,7 @@ export function validateVisualReferences(references, context) {
       }
     }
   }
-  return structuredClone(references);
+  const normalized = structuredClone(references);
+  for (const reference of normalized) reference.evidenceRegions ??= [];
+  return normalized;
 }

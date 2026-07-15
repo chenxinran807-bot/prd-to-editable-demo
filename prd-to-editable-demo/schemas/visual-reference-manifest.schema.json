@@ -19,7 +19,7 @@
           "regionId": { "type": "string", "pattern": ".*\\S.*" }
         }
       },
-      "bindings": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/binding" } },
+      "bindings": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/binding" } },
       "exclude": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/property" } },
       "evidenceRegions": { "type": "array", "items": { "$ref": "#/$defs/evidenceRegion" } }
     }
