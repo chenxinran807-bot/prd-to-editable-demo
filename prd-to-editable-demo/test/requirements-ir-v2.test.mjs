@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { validateRequirementsIrV2 } from '../src/requirements-ir-v2.mjs';
 
@@ -75,6 +76,15 @@ test('rejects a source quote that is absent from the PRD', () => {
   assert.throws(() => validateRequirementsIrV2(input, source), /exact substring/i);
 });
 
+test('rejects a missing or whitespace-only source quote', () => {
+  const missing = validIr();
+  delete missing.sourceUnits[0].quote;
+  assert.throws(() => validateRequirementsIrV2(missing, source), /quote must be a non-empty string/i);
+  const blank = validIr();
+  blank.sourceUnits[0].quote = '   ';
+  assert.throws(() => validateRequirementsIrV2(blank, source), /quote must be a non-empty string/i);
+});
+
 test('rejects an unknown or cyclic taxonomy parent', () => {
   const unknown = validIr();
   unknown.taxonomy[1].parentId = 'nope';
@@ -101,4 +111,23 @@ test('rejects duplicate IDs, including region IDs', () => {
   const input = validIr();
   input.regions.push({ ...input.regions[0] });
   assert.throws(() => validateRequirementsIrV2(input, source), /duplicate region id/i);
+});
+
+test('rejects a page that claims a region owned by another page', () => {
+  const input = validIr();
+  input.pages.push({ id: 'p2', name: 'Other', regionIds: ['reg1'] });
+  assert.throws(() => validateRequirementsIrV2(input, source), /region reg1 belongs to page p1/i);
+});
+
+test('schema rejects whitespace-only persisted strings consistently', () => {
+  const schema = JSON.parse(readFileSync(new URL('../schemas/requirements-ir-v2.schema.json', import.meta.url), 'utf8'));
+  const nonWhitespace = '.*\\S.*';
+  assert.equal(schema.$defs.id.pattern, nonWhitespace);
+  for (const [definition, fields] of Object.entries({
+    sourceUnit: ['quote'], sourceCoverage: ['quote'], requirement: ['text'],
+    taxonomyNode: ['label'], page: ['name'], region: ['name'], action: ['name'],
+    coreJourney: ['name'], blocker: ['text'],
+  })) {
+    for (const field of fields) assert.equal(schema.$defs[definition].properties[field].pattern, nonWhitespace, `${definition}.${field}`);
+  }
 });

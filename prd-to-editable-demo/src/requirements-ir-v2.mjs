@@ -112,6 +112,10 @@ export function validateRequirementsIrV2(input, source) {
     keys(page, ['id', 'name', 'regionIds'], `page ${page.id}`);
     string(page.name, `page ${page.id} name`);
     references(page.regionIds, regionIds, `page ${page.id} regionIds`, 'region');
+    for (const regionId of page.regionIds) {
+      const region = input.regions.find(({ id }) => id === regionId);
+      if (region.pageId !== page.id) fail(`region ${regionId} belongs to page ${region.pageId}, not page ${page.id}`);
+    }
   }
   for (const region of input.regions) {
     keys(region, ['id', 'pageId', 'name'], `region ${region.id}`);

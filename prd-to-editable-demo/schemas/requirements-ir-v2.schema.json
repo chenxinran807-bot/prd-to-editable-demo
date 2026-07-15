@@ -18,7 +18,7 @@
     "blockers": { "type": "array", "items": { "$ref": "#/$defs/blocker" } }
   },
   "$defs": {
-    "id": { "type": "string", "minLength": 1 },
+    "id": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
     "idArray": { "type": "array", "items": { "$ref": "#/$defs/id" } },
     "certainty": { "enum": ["explicit", "derived", "confirmed", "assumed", "missing", "conflicting"] },
     "sourceUnit": {
@@ -28,14 +28,14 @@
         "id": { "$ref": "#/$defs/id" },
         "purpose": { "enum": ["product_requirement", "acceptance_criterion", "design_constraint", "business_context", "research_evidence", "delivery_metadata"] },
         "certainty": { "$ref": "#/$defs/certainty" },
-        "quote": { "type": "string", "minLength": 1 }
+        "quote": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" }
       }
     },
     "sourceCoverage": {
       "type": "object", "additionalProperties": false,
       "required": ["quote", "sourceIds"],
       "properties": {
-        "quote": { "type": "string", "minLength": 1 },
+        "quote": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
         "sourceIds": { "$ref": "#/$defs/idArray", "minItems": 1 }
       }
     },
@@ -43,7 +43,7 @@
       "type": "object", "additionalProperties": false,
       "required": ["id", "text", "sourceIds", "uiEligible", "taxonomyIds"],
       "properties": {
-        "id": { "$ref": "#/$defs/id" }, "text": { "type": "string", "minLength": 1 },
+        "id": { "$ref": "#/$defs/id" }, "text": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
         "sourceIds": { "$ref": "#/$defs/idArray" }, "uiEligible": { "type": "boolean" },
         "taxonomyIds": { "$ref": "#/$defs/idArray" }
       }
@@ -51,23 +51,23 @@
     "taxonomyNode": {
       "type": "object", "additionalProperties": false,
       "required": ["id", "label", "parentId"],
-      "properties": { "id": { "$ref": "#/$defs/id" }, "label": { "type": "string", "minLength": 1 }, "parentId": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] } }
+      "properties": { "id": { "$ref": "#/$defs/id" }, "label": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" }, "parentId": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] } }
     },
     "page": {
       "type": "object", "additionalProperties": false,
       "required": ["id", "name", "regionIds"],
-      "properties": { "id": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1 }, "regionIds": { "$ref": "#/$defs/idArray" } }
+      "properties": { "id": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" }, "regionIds": { "$ref": "#/$defs/idArray" } }
     },
     "region": {
       "type": "object", "additionalProperties": false,
       "required": ["id", "pageId", "name"],
-      "properties": { "id": { "$ref": "#/$defs/id" }, "pageId": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1 } }
+      "properties": { "id": { "$ref": "#/$defs/id" }, "pageId": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" } }
     },
     "action": {
       "type": "object", "additionalProperties": false,
       "required": ["id", "name", "fromPageId", "toPageId", "regionId", "requirementIds"],
       "properties": {
-        "id": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1 },
+        "id": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
         "fromPageId": { "$ref": "#/$defs/id" }, "toPageId": { "$ref": "#/$defs/id" },
         "regionId": { "$ref": "#/$defs/id" }, "requirementIds": { "$ref": "#/$defs/idArray" }
       }
@@ -76,7 +76,7 @@
       "type": "object", "additionalProperties": false,
       "required": ["id", "name", "actionIds", "startPageId", "expectedEndPageId"],
       "properties": {
-        "id": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1 },
+        "id": { "$ref": "#/$defs/id" }, "name": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
         "actionIds": { "$ref": "#/$defs/idArray", "minItems": 1 },
         "startPageId": { "$ref": "#/$defs/id" }, "expectedEndPageId": { "$ref": "#/$defs/id" }
       }
@@ -85,7 +85,7 @@
       "type": "object", "additionalProperties": false,
       "required": ["id", "text", "certainty", "sourceIds"],
       "properties": {
-        "id": { "$ref": "#/$defs/id" }, "text": { "type": "string", "minLength": 1 },
+        "id": { "$ref": "#/$defs/id" }, "text": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
         "certainty": { "$ref": "#/$defs/certainty" }, "sourceIds": { "$ref": "#/$defs/idArray" }
       }
     }
