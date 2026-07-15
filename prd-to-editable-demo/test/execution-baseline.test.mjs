@@ -42,10 +42,13 @@ test('compiles ordered frozen page slices without background requirements', () =
   assert.deepEqual(baseline.unresolvedNonBlocking, ir.blockers);
   assert.deepEqual(baseline.pages[0].regions.map(({ id }) => id), ['region-first', 'region-late']);
   assert.deepEqual(baseline.pages[0].requirements.map(({ id }) => id), ['req-page', 'req-first', 'req-late']);
+  assert.deepEqual(baseline.nonUiRequirements, [ir.requirements.find(({ id }) => id === 'req-background')]);
   assert.deepEqual(baseline.pages[0].visualReferences[0].scope, { pageId: 'page-a', regionId: 'region-first' });
   assert.equal(baseline.pages[0].requirements[0].exactCopy, 'Exact page copy');
   assert.ok(Object.isFrozen(baseline));
   assert.ok(Object.isFrozen(baseline.pages[0].requirements[0].evidence));
+  assert.ok(Object.isFrozen(baseline.nonUiRequirements));
+  assert.ok(Object.isFrozen(baseline.nonUiRequirements[0].sourceIds));
   ir.taxonomy[0].label = 'mutated';
   assert.equal(baseline.taxonomy[0].label, 'Account');
 });

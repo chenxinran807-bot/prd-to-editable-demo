@@ -15,13 +15,13 @@ function fixture() {
         requirements: [
           { id: 'copy', text: 'Greeting', exactCopy: 'Hello exactly', uiEligible: true, targetIds: ['hero'] },
           { id: 'rendered', text: 'Useful content', uiEligible: true, targetIds: ['start'] },
-          { id: 'background', text: 'Market research', uiEligible: false, purpose: 'research_evidence', targetIds: ['start'] },
         ],
         actions: [{ id: 'next', name: 'Continue', fromPageId: 'start', toPageId: 'done', regionId: 'hero' }],
         visualReferences: [{ id: 'visual', scope: { pageId: 'start', regionId: 'hero' }, bindings: [{ property: 'layout', fidelity: 'exact' }], exclude: ['color'] }],
       },
       { id: 'done', name: 'Done', regions: [], requirements: [], actions: [], visualReferences: [] },
     ],
+    nonUiRequirements: [{ id: 'background', text: 'Market research', uiEligible: false, purpose: 'research_evidence', sourceIds: ['source-background'], targetIds: ['start'] }],
   };
   const model = {
     taxonomy: structuredClone(baseline.taxonomy), coreJourneys: structuredClone(baseline.coreJourneys), startPage: 'start',
@@ -143,9 +143,21 @@ test('rejects explicit background requirement traces but ignores incidental word
   assert.doesNotThrow(() => verifyFidelity(incidental));
 });
 
-test('rejects background evidence metadata even without a requirementId', () => {
+test('rejects canonical background source IDs even without a requirementId', () => {
   const data = fixture();
-  data.baseline.pages[0].requirements[2].evidence = [{ sourceId: 'source', quote: 'confidential evidence' }];
-  data.model.pages[0].elements.push({ key: 'leaked-evidence', text: 'Summary', evidence: [{ sourceId: 'source', quote: 'confidential evidence' }] });
-  assert.throws(() => verifyFidelity(data), /background requirement background.*evidence/i);
+  data.model.pages[0].elements.push({ key: 'leaked-source', text: 'Unrelated visible words', sourceIds: ['source-background'] });
+  assert.throws(() => verifyFidelity(data), /protected source source-background.*rendered/i);
+  const clean = fixture(); clean.model.pages[0].elements.push({ key: 'same-words', text: 'Market research', sourceIds: ['source-ui'] });
+  assert.doesNotThrow(() => verifyFidelity(clean));
+});
+
+test('requires unique non-empty element keys for requirement and action traceability', () => {
+  const missingRequirement = fixture(); delete missingRequirement.model.pages[0].elements[0].key;
+  assert.throws(() => verifyFidelity(missingRequirement), /requirement copy.*non-empty.*key/i);
+  const blankAction = fixture(); blankAction.model.pages[0].elements[2].key = '   ';
+  assert.throws(() => verifyFidelity(blankAction), /action next.*non-empty.*key/i);
+  const ambiguousRequirement = fixture(); ambiguousRequirement.model.pages[1].elements.push({ key: 'copy', text: 'Other' });
+  assert.throws(() => verifyFidelity(ambiguousRequirement), /requirement copy.*unique.*key copy/i);
+  const ambiguousAction = fixture(); ambiguousAction.model.pages[1].elements.push({ key: 'next', text: 'Other' });
+  assert.throws(() => verifyFidelity(ambiguousAction), /action next.*unique.*key next/i);
 });

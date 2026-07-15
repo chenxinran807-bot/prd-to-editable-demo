@@ -61,6 +61,25 @@ export function verifyFidelity({ baseline, model }) {
   checks.push({ name: 'pages', passed: true });
 
   const elements = allElements(model);
+  const protectedRequirements = [
+    ...(baseline.nonUiRequirements ?? []),
+    ...baselineRequirements(baseline).map(({ requirement }) => requirement)
+      .filter(requirement => requirement.uiEligible === false || BACKGROUND_PURPOSES.has(requirement.purpose)),
+  ];
+  const protectedRequirementIds = new Set(protectedRequirements.map(requirement => requirement.id));
+  const protectedSourceIds = new Set(protectedRequirements.flatMap(requirement => requirement.sourceIds ?? []));
+  for (const { element } of elements) {
+    if (protectedRequirementIds.has(element.requirementId)) fail(`background requirement ${element.requirementId} was rendered`);
+    for (const sourceId of element.sourceIds ?? []) {
+      if (protectedSourceIds.has(sourceId)) fail(`protected source ${sourceId} was rendered`);
+    }
+  }
+  const validateTraceKeys = (kind, id, rendered) => {
+    for (const { element } of rendered) {
+      if (typeof element.key !== 'string' || !element.key.trim()) fail(`${kind} ${id} requires a non-empty element key`);
+      if (elements.filter(item => item.element.key === element.key).length !== 1) fail(`${kind} ${id} requires unique element key ${element.key}`);
+    }
+  };
   for (const { page, requirement } of baselineRequirements(baseline)) {
     const rendered = elements.filter(item => item.element.requirementId === requirement.id);
     const isBackground = requirement.uiEligible === false || BACKGROUND_PURPOSES.has(requirement.purpose);
@@ -75,6 +94,7 @@ export function verifyFidelity({ baseline, model }) {
       continue;
     }
     const onPage = rendered.filter(item => item.page.id === page.id);
+    validateTraceKeys('requirement', requirement.id, onPage);
     if (requirement.exactCopy !== undefined) {
       if (!onPage.length) fail(`exact copy requirement ${requirement.id} is missing from page ${page.id}`);
       const targetRegions = (requirement.targetIds ?? []).filter(id => (page.regions ?? []).some(region => region.id === id));
@@ -98,6 +118,7 @@ export function verifyFidelity({ baseline, model }) {
   for (const { page, action } of declaredActions) {
     const matches = elements.filter(item => item.element.actionId === action.id);
     if (matches.length !== 1) fail(`action ${action.id} must have exactly one rendered actionable element`);
+    validateTraceKeys('action', action.id, matches);
     const match = matches[0];
     if (match.page.id !== action.fromPageId || match.page.id !== page.id) fail(`action ${action.id} must be rendered on from page ${action.fromPageId}`);
     if (match.element.disabled || match.element.hidden) fail(`action ${action.id} must be enabled and visible`);

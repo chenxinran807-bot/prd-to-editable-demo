@@ -154,6 +154,8 @@ export function compileExecutionBaseline(ir, visualReferences, previous = null, 
     version: (previous?.version ?? 0) + 1,
     taxonomy: clone(ir.taxonomy ?? []),
     coreJourneys: clone(coreJourneys),
+    nonUiRequirements: clone(requirements.filter((requirement) => requirement.uiEligible === false
+      || ['business_context', 'research_evidence', 'delivery_metadata'].includes(requirement.purpose))),
     unresolvedNonBlocking: clone(blockers.filter((item) => !isResolved(item) && blockerPriority(item) === 'P2')),
     pages: slices,
   };
