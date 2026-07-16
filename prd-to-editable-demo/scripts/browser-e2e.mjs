@@ -212,6 +212,17 @@ async function readDownload(download) {
   return JSON.parse(await readFile(await download.path(), 'utf8'));
 }
 
+export async function createBrowserSpecialistHandoff() {
+  const parity = JSON.parse(await readFile(new URL('../references/capability-parity.json', import.meta.url), 'utf8'));
+  const selected = 'visual-quality';
+  const criteria = parity.capabilities[selected].mustPreserve;
+  return {
+    routing: { selected },
+    requirements: { title: '高保真结果' },
+    specialistEvidence: criteria.map(criterion => ({ criterion, evidence: `browser fixture: ${criterion}` }))
+  };
+}
+
 export async function runBrowserE2E() {
   let chromium;
   try {
@@ -229,11 +240,11 @@ export async function runBrowserE2E() {
   const specialistOutput = join(work, 'specialist-output');
   await mkdir(specialistSource, { recursive: true });
   await writeFile(join(specialistSource, 'index.html'), '<!doctype html><html><head><style>.specialist{color:rgb(220,0,0)}</style></head><body><button class="specialist">专业按钮</button><div id="app"></div><script>setTimeout(()=>{document.querySelector("#app").innerHTML="<button>动态专业按钮</button>"},100)</script></body></html>');
-  const criteria = ['visual evidence priority', 'generation gating', 'structured demo context', 'facts, inferences and gaps'];
-  await finalizeSpecialistResult({ sourceDir: specialistSource, outDir: specialistOutput, handoff: {
-    routing: { selected: 'pm-kakaxi' }, requirements: { title: '高保真结果' },
-    specialistEvidence: criteria.map(criterion => ({ criterion, evidence: `browser fixture: ${criterion}` }))
-  } });
+  await finalizeSpecialistResult({
+    sourceDir: specialistSource,
+    outDir: specialistOutput,
+    handoff: await createBrowserSpecialistHandoff()
+  });
   const specialistQuality = await verifySpecialistRender({ deliveryDir: specialistOutput, waitMs: 180 });
   assert.equal(specialistQuality.status, 'completed');
   const server = createServer(async (request, response) => {

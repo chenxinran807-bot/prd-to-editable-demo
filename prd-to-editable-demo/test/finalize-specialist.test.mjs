@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { finalizeSpecialistResult } from '../src/finalize-specialist.mjs';
+import * as browserE2E from '../scripts/browser-e2e.mjs';
 
 test('preserves the specialist bundle and emits a unified editable delivery', async () => {
   const root = await mkdtemp(join(tmpdir(), 'specialist-result-'));
@@ -47,4 +48,22 @@ test('accepts baseline evidence but waits for rendered preservation before compl
   assert.equal(manifest.routing.status, 'review-required');
   assert.deepEqual(quality.specialistBaseline.missing, []);
   assert.equal(quality.renderPreservation.status, 'pending');
+});
+
+test('browser specialist fixture supplies evidence for its resolved baseline', async () => {
+  assert.equal(typeof browserE2E.createBrowserSpecialistHandoff, 'function');
+  const root = await mkdtemp(join(tmpdir(), 'browser-specialist-baseline-'));
+  const source = join(root, 'source');
+  const output = join(root, 'output');
+  await mkdir(source, { recursive: true });
+  await writeFile(join(source, 'index.html'), '<!doctype html><html><body><h1>专业结果</h1></body></html>');
+
+  await finalizeSpecialistResult({
+    sourceDir: source,
+    outDir: output,
+    handoff: await browserE2E.createBrowserSpecialistHandoff()
+  });
+
+  const quality = JSON.parse(await readFile(join(output, 'quality-report.json'), 'utf8'));
+  assert.deepEqual(quality.specialistBaseline.missing, []);
 });
