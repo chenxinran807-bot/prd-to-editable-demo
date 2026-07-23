@@ -13,6 +13,10 @@ description: >-
 
 让用户只负责产品意图和关键选择，让 Agent 负责分析、探索、映射、生成、验收、注入和回归。Figma 采集是可选增强，不是进入主流程的前提；不要让用户搬运 manifest、taskId、nodeId 或本机路径。
 
+## 对用户隐藏内部实现
+
+用户界面和对话只说用户正在确认什么、系统正在完成什么、下一步需要什么。不得展示脚本名、不得展示命令名、不得展示内部状态键，也不得用英文阶段名、文件路径、Schema、哈希、P0/P1 或工具调用过程解释进度。内部执行可以保留完整机器证据，但对外改写为“已记录页面范围”“正在生成动线图”“正在检查视觉与交互”“原型已通过验收”等自然语言。只有失败且用户需要采取行动时，才说明必要原因和操作。
+
 ## 固定流程
 
 ### 1. 读取输入
@@ -56,9 +60,13 @@ python3 scripts/figma_task_runtime.py --owner <当前用户 openId> <候选任�
 - 已有明确视觉目标且用户未要求重设计：沿绑定参考直接还原，不强制探索。
 - 没有明确视觉目标，或用户要求重设计：生成**恰好三个**真实关键页视觉方向，保存最终 PNG 并实际运行 `prototype_pipeline.py validate-visual` 校验真实尺寸；门禁通过后才等用户选定或组合。不得用文字卡片或模型自报“已通过”冒充校验。
 
+用户确认视觉方向或参考图时，立即记录该文件的 SHA-256 与确认消息 ID。确认后的视觉基准只读冻结；Agent 不得覆盖、重生成，或用实现截图反向替换参考图。确需改变基准时必须重新让用户确认。
+
 ### 5. 生成并确认用户动线图
 
 按 [flow-confirmation.md](references/flow-confirmation.md) 生成 `flow.json` 和可打开的横向用户动线图 `flow/flow.html`，展示页面/状态缩略图、进入与返回、分支、PRD 条款以及页面/区域/组件级 `visualBindings`；不得用表格代替动线图。一条用户消息只允许确认一个节点，必须写入独立 `confirmationEvents` 后立即停下；所有纳入范围的节点确认前，不得生成完整原型。
+
+每次确认只运行 `prototype_pipeline.py confirm-flow`，直接使用返回的 `nextNode` 展示下一节点；禁止重新读 Skill、手改 `flow.json` 或额外写状态。最后运行一次 `prototype_pipeline.py validate-flow`，不要通过 Python import 调用内部函数。
 
 ### 6. 生成完整原型
 
@@ -72,11 +80,13 @@ python3 scripts/figma_task_runtime.py --owner <当前用户 openId> <候选任�
 
 ### 7. 自动执行三层 QA
 
-生成后按 [automatic-qa.md](references/automatic-qa.md) 固定环境，真实渲染并保存实现截图，再检查视觉一致性、需求忠实度、交互与流程。证据写入 `qa/qa-result.json` 并调用 `validate_qa_report`；DOM/结构检查不能代替视觉比较。按轮批量修复，最多三轮。仍有 P0/P1 时阻断交付并报告，不得假装通过。默认不展示大块验收摘要，也不生成 `qa/design-qa.md`。
+生成后按 [automatic-qa.md](references/automatic-qa.md) 固定环境，真实渲染并保存实现截图，再检查视觉一致性、需求忠实度、交互与流程。优先使用 Agent 已有浏览器能力；shell 启动浏览器前先运行 `prototype_pipeline.py check-browser`。探测失败立即阻断，不得临时安装浏览器或系统依赖，不得用 jsdom 冒充真实浏览器 QA。先把预注入证据写入 `qa/qa-result.json`，但此时**不得调用最终 QA 门禁或声称通过**。DOM/结构检查不能代替视觉比较。按轮批量修复，最多三轮。仍有 P0/P1 时阻断交付并报告，不得假装通过。默认不展示大块验收摘要，也不生成 `qa/design-qa.md`。
 
 ### 8. 自动注入标注层
 
 生成成功后必须用 `html-editor` 包装器注入标注层，并传入 taskId、sessionId 和 prdFingerprint。注入失败时 Demo 不算完整交付；修复后再交付，或明确提供未注入版本和失败原因。
+
+注入后必须在标注工具可见的真实交付状态重新执行保存、提交、返回等核心交互，保存证据截图，并把结果写入 `qa/qa-result.json.postInjection`。随后才调用 `validate_qa_report`；门禁通过后才能进入回执与最终交付。静态 DOM、Schema 或依赖检查不能替代这次注入后交互回归。
 
 用户完成标注并粘贴回当前对话后，读取 [iteration-handoff.md](references/iteration-handoff.md)：只修改 `targetClauseId` / target-only 范围，回归所有受影响条款，并证明未受影响页面没有变化。
 
