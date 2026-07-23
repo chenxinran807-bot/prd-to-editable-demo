@@ -60,7 +60,9 @@ class WorkflowDocsTest(unittest.TestCase):
             "不得只展示表格",
             "confirmationEvents",
             "一条用户消息只能确认一个节点",
-            "confirm_flow_node",
+            "confirm-flow",
+            "validate-flow",
+            "nextNode",
         ):
             self.assertIn(required, text)
 
@@ -75,6 +77,20 @@ class WorkflowDocsTest(unittest.TestCase):
             "P1",
             "qa/qa-result.json",
             "不默认生成",
+            "check-browser",
+            "不得临时安装",
+            "jsdom",
+        ):
+            self.assertIn(required, text)
+
+    def test_user_facing_messages_hide_internal_implementation_names(self):
+        text = self.read("SKILL.md")
+        for required in (
+            "对用户隐藏内部实现",
+            "不得展示脚本名",
+            "不得展示命令名",
+            "不得展示内部状态键",
+            "只说用户正在确认什么、系统正在完成什么、下一步需要什么",
         ):
             self.assertIn(required, text)
 

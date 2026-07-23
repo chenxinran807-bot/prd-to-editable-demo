@@ -1,5 +1,8 @@
 import pathlib
+import json
+import os
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -22,6 +25,14 @@ from prototype_pipeline import (  # noqa: E402
 
 
 class PrototypePipelineTest(unittest.TestCase):
+    def run_cli(self, *args):
+        return subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "prototype_pipeline.py"), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
     def png(self, path, width, height):
         path.write_bytes(
             b"\x89PNG\r\n\x1a\n"
@@ -129,6 +140,100 @@ class PrototypePipelineTest(unittest.TestCase):
         with self.assertRaisesRegex(PipelineValidationError, "一条用户消息只能确认一个节点"):
             confirm_flow_node(flow, "settings", "message-1")
 
+    def test_validate_flow_cli_is_available(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            flow_path = pathlib.Path(temporary) / "flow.json"
+            flow_path.write_text(
+                json.dumps({
+                    "schemaVersion": "1.0",
+                    "presentation": {
+                        "type": "visual-flow",
+                        "artifact": "flow/flow.html",
+                        "layout": "left-to-right",
+                    },
+                    "nodes": [{
+                        "id": "home",
+                        "title": "首页",
+                        "thumbnail": "flow/home.png",
+                        "confirmation": "confirmed",
+                        "visualBindings": [{"target": "page-shell"}],
+                    }],
+                    "edges": [],
+                    "confirmationEvents": [{
+                        "nodeId": "home",
+                        "userMessageId": "message-1",
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            result = self.run_cli("validate-flow", str(flow_path))
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn("OK", result.stdout)
+
+    def test_confirm_flow_cli_atomically_writes_and_returns_next_node(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            flow_path = pathlib.Path(temporary) / "flow.json"
+            flow_path.write_text(
+                json.dumps({
+                    "schemaVersion": "1.0",
+                    "presentation": {
+                        "type": "visual-flow",
+                        "artifact": "flow/flow.html",
+                        "layout": "left-to-right",
+                    },
+                    "nodes": [
+                        {
+                            "id": "home",
+                            "title": "首页",
+                            "thumbnail": "flow/home.png",
+                            "confirmation": "pending",
+                            "visualBindings": [{"target": "page-shell"}],
+                        },
+                        {
+                            "id": "success",
+                            "title": "成功态",
+                            "thumbnail": "flow/success.png",
+                            "confirmation": "pending",
+                            "visualBindings": [{"target": "success-toast"}],
+                        },
+                    ],
+                    "edges": [],
+                    "confirmationEvents": [],
+                }),
+                encoding="utf-8",
+            )
+            result = self.run_cli(
+                "confirm-flow",
+                str(flow_path),
+                "--node",
+                "home",
+                "--message-id",
+                "message-1",
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual("success", payload["nextNode"]["id"])
+            saved = json.loads(flow_path.read_text(encoding="utf-8"))
+            self.assertEqual("confirmed", saved["nodes"][0]["confirmation"])
+            self.assertEqual("pending", saved["nodes"][1]["confirmation"])
+            self.assertEqual("message-1", saved["confirmationEvents"][0]["userMessageId"])
+
+    def test_check_browser_cli_fails_fast_without_accepting_jsdom(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            fake_browser = pathlib.Path(temporary) / "fake-browser"
+            fake_browser.write_text("#!/bin/sh\nexit 23\n", encoding="utf-8")
+            os.chmod(fake_browser, 0o755)
+            result = self.run_cli(
+                "check-browser",
+                "--executable",
+                str(fake_browser),
+                "--timeout",
+                "1",
+            )
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("真实浏览器", result.stderr)
+            self.assertNotIn("jsdom", result.stdout.lower())
+
     def test_qa_batches_fixes_and_blocks_unresolved_p0_p1_after_three_rounds(self):
         p1 = {
             "target": "top-navigation",
@@ -211,9 +316,18 @@ class PrototypePipelineTest(unittest.TestCase):
             "comparisons": [{
                 "target": "home-shell",
                 "reference": "visual-options/A.png",
+                "referenceSha256": "a" * 64,
+                "confirmedReferenceSha256": "a" * 64,
+                "confirmedByUserMessageId": "msg-visual-a",
                 "actualScreenshot": "qa/evidence/home.png",
                 "method": "rendered-screenshot",
             }],
+            "postInjection": {
+                "editorInjected": True,
+                "interactionRetested": True,
+                "coreActionsPassed": True,
+                "evidenceScreenshot": "qa/evidence/post-injection.png",
+            },
             "findings": [],
         }
         self.assertEqual(report, validate_qa_report(report))
@@ -223,6 +337,72 @@ class PrototypePipelineTest(unittest.TestCase):
         report["comparisons"][0]["actualScreenshot"] = "qa/evidence/home.png"
         report["environment"]["editorHidden"] = False
         with self.assertRaisesRegex(PipelineValidationError, "html-editor"):
+            validate_qa_report(report)
+
+    def test_qa_rejects_mutated_confirmed_visual_reference(self):
+        report = {
+            "schemaVersion": "1.0",
+            "environment": {
+                "viewport": {"width": 390, "height": 844},
+                "page": "home",
+                "state": "default",
+                "scroll": {"x": 0, "y": 0},
+                "fontsReady": True,
+                "imagesReady": True,
+                "animationsPaused": True,
+                "editorHidden": True,
+            },
+            "comparisons": [{
+                "target": "home-shell",
+                "reference": "visual-options/A.png",
+                "referenceSha256": "b" * 64,
+                "confirmedReferenceSha256": "a" * 64,
+                "confirmedByUserMessageId": "msg-visual-a",
+                "actualScreenshot": "qa/evidence/home.png",
+                "method": "rendered-screenshot",
+            }],
+            "postInjection": {
+                "editorInjected": True,
+                "interactionRetested": True,
+                "coreActionsPassed": True,
+                "evidenceScreenshot": "qa/evidence/post-injection.png",
+            },
+            "findings": [],
+        }
+        with self.assertRaisesRegex(PipelineValidationError, "确认后发生变化"):
+            validate_qa_report(report)
+
+    def test_qa_requires_interaction_retest_after_editor_injection(self):
+        report = {
+            "schemaVersion": "1.0",
+            "environment": {
+                "viewport": {"width": 390, "height": 844},
+                "page": "home",
+                "state": "default",
+                "scroll": {"x": 0, "y": 0},
+                "fontsReady": True,
+                "imagesReady": True,
+                "animationsPaused": True,
+                "editorHidden": True,
+            },
+            "comparisons": [{
+                "target": "home-shell",
+                "reference": "visual-options/A.png",
+                "referenceSha256": "a" * 64,
+                "confirmedReferenceSha256": "a" * 64,
+                "confirmedByUserMessageId": "msg-visual-a",
+                "actualScreenshot": "qa/evidence/home.png",
+                "method": "rendered-screenshot",
+            }],
+            "postInjection": {
+                "editorInjected": True,
+                "interactionRetested": False,
+                "coreActionsPassed": False,
+                "evidenceScreenshot": "",
+            },
+            "findings": [],
+        }
+        with self.assertRaisesRegex(PipelineValidationError, "注入后"):
             validate_qa_report(report)
 
 
