@@ -1,6 +1,31 @@
-# PRD to Editable Demo
+# PRD Demo Skills
 
-一个可安装到兼容 Agent 的 Skill：把 PRD 快速生成零依赖、可点击、可直接编辑的 HTML 评审原型。
+本仓库保存 PRD 到交互原型能力的可审计源码。
+
+## 当前正式版：`prd-demo`
+
+`prd-demo/` 是当前在 Skills 平台和 Mira 发布的正式工作流。它覆盖：
+
+- 逐项需求确认；
+- 三种真实视觉方向探索；
+- 用户动线图逐节点确认；
+- 高保真交互原型生成；
+- 有真实截图证据的三层 QA；
+- `html-editor` 标注回改；
+- Figma 批量采集任务的可选消费。
+
+Skills 平台正式版本：`1.0.10`。
+
+本地验证：
+
+```bash
+python3 -m unittest discover -s prd-demo/test -v
+python3 prd-demo/scripts/build_release.py
+```
+
+`prd-to-editable-demo/` 是早期本地 CLI MVP，继续保留用于历史追溯，不代表当前发布版本。
+
+## 早期 CLI MVP
 
 ## 快速开始
 

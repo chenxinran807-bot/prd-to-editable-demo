@@ -9,3 +9,6 @@ registry:
     - path: prd-to-editable-demo
       items:
         - prd-to-editable-demo
+    - path: prd-demo
+      items:
+        - prd-demo
