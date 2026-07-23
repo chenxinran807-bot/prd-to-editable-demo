@@ -8,4 +8,4 @@ registry:
   skills:
     - path: prd-to-editable-demo
       items:
-        - prd-to-editable-demo
+        - prd-demo
