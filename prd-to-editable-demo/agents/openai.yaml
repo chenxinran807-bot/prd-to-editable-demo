@@ -1,7 +1,7 @@
 interface:
-  display_name: "PRD 可编辑原型"
-  short_description: "将 PRD 快速生成可点击、可直接修改的评审原型"
-  default_prompt: "使用 $prd-to-editable-demo 将这份 PRD 生成可编辑的交互评审 Demo。"
+  display_name: "PRD 高保真交互 Demo"
+  short_description: "从需求确认、视觉方向到自动 QA 的高保真交互 Demo"
+  default_prompt: "使用 $prd-demo，根据当前 PRD 先逐项确认并确定视觉方向与用户动线，再生成高保真交互 Demo 并自动 QA。"
 
 policy:
   allow_implicit_invocation: true
