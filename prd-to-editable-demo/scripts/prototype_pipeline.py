@@ -3,8 +3,13 @@
 
 import argparse
 import json
+import os
 import pathlib
+import re
+import shutil
 import struct
+import subprocess
+import tempfile
 from urllib.parse import urlparse
 
 
@@ -130,6 +135,81 @@ def confirm_flow_node(flow, node_id, user_message_id):
     return flow
 
 
+def _write_json_atomic(path, value):
+    target = pathlib.Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    handle, temporary = tempfile.mkstemp(
+        prefix=f".{target.name}.", suffix=".tmp", dir=target.parent
+    )
+    try:
+        with os.fdopen(handle, "w", encoding="utf-8") as output:
+            json.dump(value, output, ensure_ascii=False, indent=2)
+            output.write("\n")
+        os.replace(temporary, target)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def confirm_flow_file(path, node_id, user_message_id):
+    flow_path = pathlib.Path(path)
+    flow = json.loads(flow_path.read_text(encoding="utf-8"))
+    confirm_flow_node(flow, node_id, user_message_id)
+    _write_json_atomic(flow_path, flow)
+    pending = [
+        node for node in flow.get("nodes", [])
+        if node.get("confirmation") != "confirmed"
+    ]
+    return {
+        "confirmedNodeId": node_id,
+        "confirmedCount": len(flow.get("nodes", [])) - len(pending),
+        "totalCount": len(flow.get("nodes", [])),
+        "nextNode": pending[0] if pending else None,
+        "allConfirmed": not pending,
+    }
+
+
+def check_browser_runtime(executable=None, timeout=10):
+    browser = executable or next(
+        (
+            shutil.which(candidate)
+            for candidate in ("chromium", "chromium-browser", "google-chrome", "chrome")
+            if shutil.which(candidate)
+        ),
+        None,
+    )
+    if not browser:
+        raise PipelineValidationError(
+            "真实浏览器运行时不可用；禁止临时安装依赖或用 jsdom 冒充浏览器 QA"
+        )
+    command = [
+        browser,
+        "--headless",
+        "--no-sandbox",
+        "--disable-gpu",
+        "--dump-dom",
+        "data:text/html,<title>prd-demo-qa</title><main>OK</main>",
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise PipelineValidationError(
+            f"真实浏览器启动失败: {error}; 禁止降级为 jsdom"
+        ) from error
+    if result.returncode != 0 or "OK" not in result.stdout:
+        detail = (result.stderr or result.stdout or "unknown error").strip()
+        raise PipelineValidationError(
+            f"真实浏览器启动失败 (exit {result.returncode}): {detail[:400]}"
+        )
+    return {"browserExecutable": browser, "launchSucceeded": True}
+
+
 def _validate_findings(findings):
     for finding in findings:
         missing = sorted(FINDING_FIELDS - set(finding))
@@ -172,6 +252,26 @@ def validate_qa_report(report):
             raise PipelineValidationError("视觉比较缺少目标或视觉基准")
         if not comparison.get("actualScreenshot"):
             raise PipelineValidationError("视觉比较缺少实现截图")
+        reference_hash = comparison.get("referenceSha256")
+        confirmed_hash = comparison.get("confirmedReferenceSha256")
+        if not (
+            isinstance(reference_hash, str)
+            and re.fullmatch(r"[0-9a-fA-F]{64}", reference_hash)
+            and isinstance(confirmed_hash, str)
+            and re.fullmatch(r"[0-9a-fA-F]{64}", confirmed_hash)
+            and comparison.get("confirmedByUserMessageId")
+        ):
+            raise PipelineValidationError("视觉比较缺少用户确认时的基准哈希")
+        if reference_hash.lower() != confirmed_hash.lower():
+            raise PipelineValidationError("视觉基准确认后发生变化，必须重新请用户确认")
+    post_injection = report.get("postInjection") or {}
+    if not (
+        post_injection.get("editorInjected") is True
+        and post_injection.get("interactionRetested") is True
+        and post_injection.get("coreActionsPassed") is True
+        and post_injection.get("evidenceScreenshot")
+    ):
+        raise PipelineValidationError("html-editor 注入后必须重新运行核心交互并保存证据")
     _validate_findings(report.get("findings") or [])
     return report
 
@@ -205,12 +305,38 @@ def main():
     visual.add_argument("manifest")
     visual.add_argument("--width", type=int, required=True)
     visual.add_argument("--height", type=int, required=True)
+    flow = subparsers.add_parser("validate-flow")
+    flow.add_argument("flow")
+    confirm = subparsers.add_parser("confirm-flow")
+    confirm.add_argument("flow")
+    confirm.add_argument("--node", required=True)
+    confirm.add_argument("--message-id", required=True)
+    browser = subparsers.add_parser("check-browser")
+    browser.add_argument("--executable")
+    browser.add_argument("--timeout", type=int, default=10)
     args = parser.parse_args()
-    if args.command == "validate-visual":
-        manifest = pathlib.Path(args.manifest)
-        options = json.loads(manifest.read_text(encoding="utf-8"))
-        validate_visual_option_files(options, manifest.parent, args.width, args.height)
-        print("OK: 3 visual options have valid real PNG dimensions")
+    try:
+        if args.command == "validate-visual":
+            manifest = pathlib.Path(args.manifest)
+            options = json.loads(manifest.read_text(encoding="utf-8"))
+            validate_visual_option_files(options, manifest.parent, args.width, args.height)
+            print("OK: 3 visual options have valid real PNG dimensions")
+        elif args.command == "validate-flow":
+            flow_path = pathlib.Path(args.flow)
+            validate_flow(json.loads(flow_path.read_text(encoding="utf-8")))
+            print("OK: all flow nodes have independent confirmations")
+        elif args.command == "confirm-flow":
+            print(json.dumps(
+                confirm_flow_file(args.flow, args.node, args.message_id),
+                ensure_ascii=False,
+            ))
+        elif args.command == "check-browser":
+            print(json.dumps(
+                check_browser_runtime(args.executable, args.timeout),
+                ensure_ascii=False,
+            ))
+    except (PipelineValidationError, json.JSONDecodeError, OSError) as error:
+        parser.exit(1, f"ERROR: {error}\n")
 
 
 if __name__ == "__main__":
